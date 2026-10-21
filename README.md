@@ -4,6 +4,23 @@
 
 Plataforma científica e minimalista para construir coletivamente uma rede causal do Pantanal, com pesos de influência de **0 a 100**, sinal positivo/negativo e organização pelo método **DPSIR**.
 
+## Salas independentes e persistentes
+
+O endereço principal abre uma página de salas. A pessoa com a chave do **facilitador** pode criar uma turma, escolher o nome e receber um **código aleatório de oito caracteres**. Compartilhe **somente o código** com o grupo: o participante entra digitando-o em *Entrar com um código*, sem cadastro. Também é possível compartilhar o link `?s=CÓDIGO` ou o QR Code gerado dentro da sala.
+
+- **Cada sala tem seus próprios conceitos, setas, forças, categorias DPSIR e gráficos.** Dados de outra turma não se misturam.
+- Alterações feitas pelo grupo são **salvas automaticamente no banco Supabase**, não apenas no celular e não só quando alguém baixa o JSON.
+- A sala pode ser reaberta outro dia com o mesmo código; as relações continuam disponíveis.
+- O professor abre **Salas → Ver todas as minhas salas** e informa a mesma chave de facilitador usada na oficina principal; a lista é consultada no servidor e não depende de o celular lembrar os códigos.
+- **Salas recentes** aparecem no aparelho em que foram acessadas. Essa lista local é somente um atalho, não é onde os dados da rede ficam guardados.
+- Arquivos JSON e **Salvar versão** são cópias de segurança e registros de etapas: não são necessários para a persistência básica.
+- A oficina antiga continua acessível em **Abrir oficina principal (legado)**; os conceitos existentes não são apagados.
+- Não coloque a chave de facilitador dentro do QR Code dos alunos. No navegador do professor, você pode optar por lembrar a chave; evite isso em aparelhos compartilhados.
+
+**Observação de segurança:** o código de oito caracteres funciona como convite de entrada; qualquer pessoa que conheça esse código pode editar a sala enquanto ela estiver liberada. Para dados sensíveis, é necessário autenticação individual, que esta oficina não implementa.
+
+**Atenção à hospedagem gratuita:** o GitHub Pages hospeda apenas a interface; os dados persistem no Supabase e dependem da manutenção desse projeto. Planos gratuitos podem pausar por inatividade. Exporte JSON periodicamente para ter cópia independente do serviço.
+
 ## Funcionalidades
 
 - **Rede:** conceitos e ligações direcionadas editáveis por todos os participantes da sala; entrada compartilhada via QR Code.
@@ -17,7 +34,7 @@ Plataforma científica e minimalista para construir coletivamente uma rede causa
 
 ## Como conduzir a oficina
 
-1. Abra o endereço do aplicativo e projete o QR Code. Participantes entram no mesmo endereço.
+1. Abra o endereço principal, crie uma sala com a chave do facilitador e informe o código aos alunos. Projete o QR Code **dentro dessa sala**, ou peça que digitem o código na página inicial.
 2. Cada pessoa adiciona palavras ou expressões e indica D/P/S/I/R.
 3. Selecione origem e destino; defina a **intensidade 0–100** e o **sinal**. Edição e exclusão têm confirmação.
 4. Discuta relações e hipóteses coletivas, consultando as abas **Matriz**, **DPSIR** e **Resultados**.
@@ -35,7 +52,7 @@ Os gráficos classificam os pesos atribuídos pelas pessoas, não correlações 
 
 ## Hospedagem e dados
 
-- **GitHub Pages:** `index.html` na raiz, com implantação automática via GitHub Actions em `.github/workflows/pages.yml`.
+- **GitHub Pages:** `index.html` na raiz, com implantação automática via GitHub Actions em `.github/workflows/pages.yml`; home contém o gerenciador de salas.
 - **Interface:** HTML/CSS/JavaScript com Cytoscape.js (visualização) e QRCode.js.
 - **Persistência compartilhada:** serviço Supabase da oficina Pantanal Vivo, vinculado à sala atual.
 - **Sincronização:** notificações Broadcast e atualização periódica de 7 segundos.
