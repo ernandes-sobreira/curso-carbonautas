@@ -785,7 +785,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
     {selector:"edge:selected",style:{"line-color":COLOR.sel,"target-arrow-color":COLOR.sel,"width":ele=>Math.max(2.5,Number(ele.data("weight"))*6+1),"overlay-color":"#8FB8A6","overlay-opacity":.18,"overlay-padding":6}}
    ]});
   cy.on("tap","node",e=>{const id=e.target.id();
-   if(reviewedSnapshot){selectNode(id);toast("Prévia do arquivo: restaure na sala para editar conceitos.");return}
+   if(reviewedSnapshot){selectNode(id);toast("Arraste livremente. Para salvar as posições desta prévia, baixe o JSON.");return}
    if(linkFrom&&linkFrom!==id){const from=linkFrom;endLink();openEdgePanel(from,id);return}
    selectNode(id)});
   cy.on("tap","edge",e=>{const d=e.target.data();hideNodePop();endLink();cy.elements().unselect();e.target.select();
@@ -794,7 +794,29 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   cy.on("tap",e=>{if(e.target===cy){hideNodePop();if(linkFrom)endLink();if(panelMode==="edge"||panelMode==="node-edit")closePanel()}});
   cy.on("drag","node",e=>{if(e.target.id()===selectedNode)positionNodePop()});
   cy.on("pan zoom",()=>{if(selectedNode)positionNodePop()});
-  cy.on("dragfree","node",async e=>{const id=e.target.id(),p=e.target.position();if(!canEdit())return;try{await api("update_node",{id,x:p.x,y:p.y});triggerRefresh()}catch(err){toast(errorText(err),true)}});
+  cy.on("dragfree","node",async e=>{
+   const id=e.target.id(),p=e.target.position();
+   if(!Number.isFinite(p.x)||!Number.isFinite(p.y))return;
+   if(reviewedSnapshot){
+    const n=reviewedSnapshot.nodes.find(node=>node.id===id);
+    if(!n)return;
+    n.pos_x=p.x;n.pos_y=p.y;
+    toast("Bolinhas reorganizadas na prévia. Baixe o JSON para guardar as posições.");
+    return;
+   }
+   if(!canEdit())return;
+   const n=nodes.find(node=>node.id===id);
+   const previous=n?{x:n.pos_x,y:n.pos_y}:null;
+   if(n){n.pos_x=p.x;n.pos_y=p.y}
+   try{
+    await api("update_node",{id,x:p.x,y:p.y});
+    triggerRefresh();
+    toast("Nova posição salva para toda a sala.");
+   }catch(err){
+    if(n&&previous){n.pos_x=previous.x;n.pos_y=previous.y}
+    toast("Não foi possível salvar a posição: "+errorText(err),true);
+   }
+  });
  }
  function fitView(animate=true){if(!cy||!displayData().nodes.length)return;const els=cy.elements();if(animate)cy.animate({fit:{eles:els,padding:70},duration:260,complete:clampZoom});else{cy.fit(els,70);clampZoom()}}
  function clampZoom(){if(!cy)return;const max=1.4;if(cy.zoom()>max){const bb=cy.elements().boundingBox();cy.zoom({level:max,position:{x:(bb.x1+bb.x2)/2,y:(bb.y1+bb.y2)/2}});cy.center(cy.elements())}}
@@ -807,7 +829,9 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   edges.forEach(e=>{if(getNode(e.source_id)&&getNode(e.target_id))list.push({group:"edges",data:{id:e.id,source:e.source_id,target:e.target_id,weight:Number(e.weight),sign:Number(e.sign)}})});
   const before=new Set(cy.nodes().map(n=>n.id()));
   cy.batch(()=>{cy.elements().remove();cy.add(list)});
-  if(reviewedSnapshot)cy.nodes().ungrabify();else cy.nodes().grabify();
+  // O posicionamento visual é permitido inclusive ao explorar um JSON importado.
+  // Somente os campos científicos (conceitos/arestas/pesos) ficam protegidos na prévia.
+  if(reviewedSnapshot||canEdit())cy.nodes().grabify();else cy.nodes().ungrabify();
   if(!had&&nodes.length)fitView(false);
   else if(nodes.length){cy.zoom(zoom);cy.pan(pan);
    const ext=cy.extent();const fresh=cy.nodes().filter(n=>!before.has(n.id()));
@@ -1114,7 +1138,25 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  $("zoomIn").addEventListener("click",()=>{if(cy)cy.animate({zoom:cy.zoom()*1.25,duration:160})});
  $("zoomOut").addEventListener("click",()=>{if(cy)cy.animate({zoom:cy.zoom()/1.25,duration:160})});
  $("fitBtn").addEventListener("click",()=>fitView());
- $("layoutBtn").addEventListener("click",()=>{if(!cy||!displayData().nodes.length)return;cy.layout({name:"cose",animate:true,animationDuration:650,fit:true,padding:70,nodeRepulsion:()=>900000,idealEdgeLength:()=>170,stop:clampZoom}).run();toast("Rede reorganizada nesta tela. Arraste um conceito para fixar a posição para todos.")});
+ $("layoutBtn").addEventListener("click",()=>{
+   if(!cy||!displayData().nodes.length)return;
+   cy.layout({
+    name:"cose",animate:true,animationDuration:650,fit:true,padding:70,
+    nodeRepulsion:()=>900000,idealEdgeLength:()=>170,
+    stop:()=>{
+     clampZoom();
+     if(reviewedSnapshot){
+      cy.nodes().forEach(ele=>{
+       const n=reviewedSnapshot.nodes.find(x=>x.id===ele.id());
+       if(n){const p=ele.position();n.pos_x=p.x;n.pos_y=p.y}
+      });
+      toast("Rede organizada na prévia. Baixe o JSON para manter as posições.");
+     }else{
+      toast("Organização automática nesta tela. Arraste as bolinhas para salvar as posições individualmente.");
+     }
+    }
+   }).run();
+  });
  $("fullscreenBtn").addEventListener("click",()=>{if(document.fullscreenElement)document.exitFullscreen();else if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>toast("Tela cheia indisponível neste navegador.",true));else toast("Tela cheia indisponível neste navegador.",true)});
  document.addEventListener("fullscreenchange",()=>{document.body.classList.toggle("present",!!document.fullscreenElement);if(document.fullscreenElement)closePanel();setTimeout(()=>{if(cy){cy.resize();fitView(false)}},120)});
  document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>$(b.dataset.close).close()));
