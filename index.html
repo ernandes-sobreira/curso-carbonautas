@@ -343,6 +343,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
       <span class="chip"><b id="nNodes">0</b> conceitos</span>
       <span class="chip"><b id="nEdges">0</b> ligações</span>
       <span class="chip"><b id="nAuthors">0</b> pessoas</span>
+       <button class="chip" id="roomCodeChip" title="Copiar o código da sala" hidden></button>
       <span class="chip warn" id="lockChip" hidden>Edições pausadas</span>
     </div>
     <div class="overlay hint" id="hint" aria-live="polite"></div>
@@ -687,17 +688,24 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
        $("roomTitle").textContent=info.room.title;
        startWorkspace();return;
      }catch(err){
-       $("welcome").hidden=false;
+       showLobby();
        $("joinCode").value=ROOM_CODE;
        lobbyMessage("joinRoomError","Não foi possível abrir a sala: "+errorText(err));
        return;
      }
    }
-   $("welcome").hidden=false;
+   showLobby();
    if($("masterKey").value)listAllRooms();
+ }
+ function showLobby(){
+   $("welcome").hidden=false;
+   ["qrBtn","fullscreenBtn","downloadBtn","adminBtn"].forEach(id=>$(id).disabled=true);
  }
  function startWorkspace(){
    $("welcome").hidden=true;
+   ["qrBtn","fullscreenBtn","downloadBtn","adminBtn"].forEach(id=>$(id).disabled=false);
+   $("roomCodeChip").hidden=!ROOM_CODE;
+   $("roomCodeChip").textContent=ROOM_CODE?"Sala "+ROOM_CODE:"";
    initGraph();live();load();setInterval(()=>{if(!document.hidden)load()},7000);
  }
  function confirmDialog(title,text,yes="Excluir"){return new Promise(res=>{const d=$("confirmDialog");$("confirmTitle").textContent=title;$("confirmText").textContent=text;$("confirmYes").textContent=yes;const done=v=>{d.close();$("confirmYes").onclick=null;$("confirmNo").onclick=null;d.oncancel=null;res(v)};$("confirmYes").onclick=()=>done(true);$("confirmNo").onclick=()=>done(false);d.oncancel=e=>{e.preventDefault();done(false)};d.showModal();$("confirmNo").focus()})}
@@ -1112,6 +1120,11 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  $("adminBtn").hidden=false;
  updateAdminState();
  $("roomsBtn").addEventListener("click",()=>location.assign(location.origin+location.pathname));
+ $("roomCodeChip").addEventListener("click",async()=>{
+   if(!ROOM_CODE)return;
+   try{await navigator.clipboard.writeText(ROOM_CODE);toast("Código "+ROOM_CODE+" copiado.")}
+   catch{toast("Código da turma: "+ROOM_CODE)}
+ });
  $("joinRoomForm").addEventListener("submit",e=>{e.preventDefault();openRoomByCode($("joinCode").value)});
  $("allRoomsBtn").addEventListener("click",listAllRooms);
  $("originalRoomBtn").addEventListener("click",()=>{
