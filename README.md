@@ -24,6 +24,7 @@ O endereço principal abre uma página de salas. A pessoa com a chave do **facil
 ## Funcionalidades
 
 - **Rede:** conceitos e ligações direcionadas editáveis por todos os participantes da sala; entrada compartilhada via QR Code.
+- **Posicionamento livre:** arraste cada bolinha com o mouse ou dedo para cima, baixo ou lados. Na sala ao vivo, a nova posição é gravada no banco e compartilhada. Ao visualizar um JSON importado, apenas as posições locais mudam, sem alterar a sala; exporte novamente o JSON para conservar o arranjo. O botão **Organizar** rearranja automaticamente (na prévia, a nova disposição também entra no JSON exportado).
 - **Matriz:** representação de influências assinadas de −100 a +100 (linha = origem; coluna = destino); `0` registrado é diferente de relação ausente.
 - **DPSIR:** forças motrizes, pressões, estado, impactos e respostas, com possibilidade de retroalimentações.
 - **Resultados:** gráficos de barras das dez ligações mais fortes e mais fracas; filtros positivas, negativas e peso zero; contagem e média das forças; ranking de conceitos pela soma das intensidades incidentes.
