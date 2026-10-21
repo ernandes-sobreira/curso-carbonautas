@@ -673,7 +673,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    finally{$("allRoomsBtn").disabled=false}
  }
  async function initializeRoom(){
-   $("masterKey").value=sessionStorage.getItem(sessionMaster)||localStorage.getItem(masterStore)||"";
+   $("masterKey").value=params.get("admin")||sessionStorage.getItem(sessionMaster)||localStorage.getItem(masterStore)||"";
    $("rememberMaster").checked=!!localStorage.getItem(masterStore);
    renderLobbyRooms();
    if(supplied){
