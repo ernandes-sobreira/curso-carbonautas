@@ -1,0 +1,45 @@
+# Pantanal Vivo · Laboratório colaborativo DPSIR
+
+**Aplicativo:** https://ernandes-sobreira.github.io/curso-carbonautas/
+
+Plataforma científica e minimalista para construir coletivamente uma rede causal do Pantanal, com pesos de influência de **0 a 100**, sinal positivo/negativo e organização pelo método **DPSIR**.
+
+## Funcionalidades
+
+- **Rede:** conceitos e ligações direcionadas editáveis por todos os participantes da sala; entrada compartilhada via QR Code.
+- **Matriz:** representação de influências assinadas de −100 a +100 (linha = origem; coluna = destino); `0` registrado é diferente de relação ausente.
+- **DPSIR:** forças motrizes, pressões, estado, impactos e respostas, com possibilidade de retroalimentações.
+- **Resultados:** gráficos de barras das dez ligações mais fortes e mais fracas; filtros positivas, negativas e peso zero; contagem e média das forças; ranking de conceitos pela soma das intensidades incidentes.
+- **Arquivos:** exportação JSON completo, CSV dos conceitos, das ligações e da matriz, além de PNG da rede.
+- **Importação:** abrir um arquivo JSON exportado anteriormente, **visualizar seus gráficos sem alterar a rede atual** e, como facilitador, **restaurá-lo na sala**.
+- **Versões arquivadas:** facilitador guarda versões no servidor; os participantes podem visualizá-las na aba Resultados. Ao restaurar um arquivo, um backup da rede anterior é criado automaticamente.
+- **Sobre:** explicações metodológicas e limites científicos.
+
+## Como conduzir a oficina
+
+1. Abra o endereço do aplicativo e projete o QR Code. Participantes entram no mesmo endereço.
+2. Cada pessoa adiciona palavras ou expressões e indica D/P/S/I/R.
+3. Selecione origem e destino; defina a **intensidade 0–100** e o **sinal**. Edição e exclusão têm confirmação.
+4. Discuta relações e hipóteses coletivas, consultando as abas **Matriz**, **DPSIR** e **Resultados**.
+5. Ao terminar, clique em **Exportar → Projeto completo (.json)**. Esse arquivo permite reabrir a oficina posteriormente.
+6. Para recuperar um projeto, use **Resultados → Importar JSON**. A pré-visualização não altera a sala. Para substituir o trabalho atual, entre no modo **Facilitador** e selecione **Restaurar na sala**; um backup é arquivado antes de restaurar.
+7. Para manter o histórico sem trocar de arquivo, entre em **Facilitador** e escolha **Resultados → Salvar versão**; as versões ficam listadas nessa aba.
+
+**Importante:** visitantes com o link público podem editar a rede, porque essa é uma oficina deliberadamente coletiva. Apenas o facilitador pode bloquear edições, reiniciar a sala, salvar versões ou restaurar um JSON. Não publique a chave privada de facilitador.
+
+## Interpretação científica
+
+O sinal é **causal-direcional**, não julgamento de valor: positivo (+) significa que um aumento na origem tende a aumentar o destino; negativo (−), que tende a diminuí-lo. A intensidade é uma avaliação da turma, **não um parâmetro físico medido**. Para um mapa cognitivo fuzzy, o peso assinado pode ser normalizado em −1 a +1 por `sinal × intensidade / 100`.
+
+Os gráficos classificam os pesos atribuídos pelas pessoas, não correlações calculadas. O ranking de centralidade baseado na soma de intensidades incidentes é uma métrica exploratória, não um índice de causalidade ou importância ecológica validado.
+
+## Hospedagem e dados
+
+- **GitHub Pages:** `index.html` na raiz, com implantação automática via GitHub Actions em `.github/workflows/pages.yml`.
+- **Interface:** HTML/CSS/JavaScript com Cytoscape.js (visualização) e QRCode.js.
+- **Persistência compartilhada:** serviço Supabase da oficina Pantanal Vivo, vinculado à sala atual.
+- **Sincronização:** notificações Broadcast e atualização periódica de 7 segundos.
+- **Arquivo e recuperação:** `pantdpsir_snapshots` com versões completas, acesso controlado na Edge Function `pantdpsir`. A restauração usa transação atômica e faz backup automático.
+- **Privacidade:** a plataforma usa nome/apelido opcional nas contribuições; evite registrar dados sensíveis.
+
+Se o GitHub Pages ainda não estiver configurado para este repositório vazio, entre em **Settings → Pages → Build and deployment → Source: GitHub Actions** e execute o workflow **Publicar Pantanal Vivo** na aba Actions. Feito isso, os pushes para `main` disparam novas publicações.
