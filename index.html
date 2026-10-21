@@ -203,6 +203,12 @@ table.matrix td.self{background:#F3F5F4}
 .muted{color:var(--muted);font-size:12px}
 .preview-banner{background:var(--sage-soft);border:1px solid #C8DECF;padding:12px 15px;border-radius:var(--radius);display:flex;justify-content:space-between;gap:12px;align-items:center;margin:0 0 15px}
 .preview-banner[hidden]{display:none}
+.global-file-preview{flex:none;position:relative;z-index:19;border-radius:0;border-left:0;border-right:0;margin:0;padding:9px clamp(12px,3vw,28px);background:#EAF4EF}
+.preview-heading{display:flex;flex-direction:column;gap:2px;min-width:0}
+.preview-heading strong{font-size:13px;overflow-wrap:anywhere}
+.preview-heading .muted{font-size:11.5px}
+.global-file-preview .res-actions{margin-left:auto;flex-shrink:0}
+@media(max-width:720px){.global-file-preview{flex-wrap:wrap;gap:8px}.global-file-preview .res-actions{margin-left:0}}
 .strength-row{width:100%;margin:11px 0;display:block}
 .strength-label{display:flex;gap:8px;align-items:center;justify-content:space-between;font-size:12px}
 .strength-label .edge-name{flex:1;overflow-wrap:anywhere;line-height:1.3}
@@ -335,6 +341,17 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   </div>
 </header>
 
+<div id="previewBanner" class="preview-banner global-file-preview" hidden role="status">
+  <div class="preview-heading">
+    <strong>Visualizando arquivo: <span id="previewTitle">Arquivo aberto</span></strong>
+    <span class="muted" id="previewCount">Rede, matriz, DPSIR e resultados do JSON · nenhuma alteração na sala ao vivo</span>
+  </div>
+  <div class="res-actions">
+    <button class="btn" id="returnLiveBtn">Voltar à sala ao vivo</button>
+    <button class="btn teal" id="restorePreviewBtn">Restaurar na sala</button>
+  </div>
+</div>
+
 <main class="stage" id="stage">
   <!-- REDE -->
   <section class="view active" id="rede" role="tabpanel" aria-labelledby="tab-rede">
@@ -408,13 +425,6 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
           <button class="btn" id="uploadJsonBtn" title="Abrir um projeto salvo no computador ou celular">↑ Importar JSON</button>
           <button class="btn primary" id="saveSnapshotBtn" title="Guardar uma versão na plataforma">Salvar versão</button>
           <input type="file" id="importFile" accept=".json,application/json" hidden>
-        </div>
-      </div>
-      <div id="previewBanner" class="preview-banner" hidden>
-        <div><strong id="previewTitle">Arquivo aberto</strong><div class="muted">Visualização temporária, sem alterar a sala atual.</div></div>
-        <div class="res-actions">
-          <button class="btn" id="returnLiveBtn">Voltar ao vivo</button>
-          <button class="btn teal" id="restorePreviewBtn">Restaurar na sala</button>
         </div>
       </div>
       <div class="res-metrics" id="resultMetrics"></div>
@@ -623,9 +633,10 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  function clamp100(v){const n=Number(v);return Number.isFinite(n)?Math.max(0,Math.min(100,Math.round(n))):0}
  function signedLabel(sign,weight){const m=Math.round(Number(weight)*100);return m===0?"0":((Number(sign)<0?"−":"+")+m)}
  function signedValue(e){return Math.round(Number(e.sign)*Number(e.weight)*100)}
- function getNode(id){return nodes.find(n=>n.id===id)}
- function getEdge(s,t){return edges.find(e=>e.source_id===s&&e.target_id===t)}
- const canEdit=()=>!(locked&&!isFacilitator);
+ function displayData(){return reviewedSnapshot||{nodes,edges}}
+ function getNode(id){return displayData().nodes.find(n=>n.id===id)}
+ function getEdge(s,t){return displayData().edges.find(e=>e.source_id===s&&e.target_id===t)}
+ const canEdit=()=>!reviewedSnapshot&&!(locked&&!isFacilitator);
  const RECENT_KEY="pantdpsir-recent-rooms";
  const readRecent=()=>{try{const value=JSON.parse(localStorage.getItem(RECENT_KEY)||"[]");return Array.isArray(value)?value.slice(0,30):[]}catch{return []}};
  function saveRecent(roomCode,roomTitle){
@@ -752,6 +763,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
 
  /* render */
  function updateAll(){
+  const {nodes,edges}=displayData();
   $("nNodes").textContent=nodes.length;$("nEdges").textContent=edges.length;
   $("nAuthors").textContent=new Set(nodes.map(n=>n.created_by).concat(edges.map(e=>e.updated_by)).filter(Boolean)).size;
   ["source","target"].forEach(id=>{const sel=$(id),cur=sel.value;sel.replaceChildren();const o=document.createElement("option");o.value="";o.textContent="Escolher";sel.appendChild(o);
@@ -773,24 +785,29 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
     {selector:"edge:selected",style:{"line-color":COLOR.sel,"target-arrow-color":COLOR.sel,"width":ele=>Math.max(2.5,Number(ele.data("weight"))*6+1),"overlay-color":"#8FB8A6","overlay-opacity":.18,"overlay-padding":6}}
    ]});
   cy.on("tap","node",e=>{const id=e.target.id();
+   if(reviewedSnapshot){selectNode(id);toast("Prévia do arquivo: restaure na sala para editar conceitos.");return}
    if(linkFrom&&linkFrom!==id){const from=linkFrom;endLink();openEdgePanel(from,id);return}
    selectNode(id)});
-  cy.on("tap","edge",e=>{const d=e.target.data();hideNodePop();endLink();cy.elements().unselect();e.target.select();openEdgePanel(d.source,d.target,true)});
+  cy.on("tap","edge",e=>{const d=e.target.data();hideNodePop();endLink();cy.elements().unselect();e.target.select();
+    if(reviewedSnapshot){toast("Prévia: "+(getNode(d.source)?.label||"Origem")+" → "+(getNode(d.target)?.label||"Destino")+" ("+signedLabel(d.sign,d.weight)+"/100). Restaure para editar.");return}
+    openEdgePanel(d.source,d.target,true)});
   cy.on("tap",e=>{if(e.target===cy){hideNodePop();if(linkFrom)endLink();if(panelMode==="edge"||panelMode==="node-edit")closePanel()}});
   cy.on("drag","node",e=>{if(e.target.id()===selectedNode)positionNodePop()});
   cy.on("pan zoom",()=>{if(selectedNode)positionNodePop()});
   cy.on("dragfree","node",async e=>{const id=e.target.id(),p=e.target.position();if(!canEdit())return;try{await api("update_node",{id,x:p.x,y:p.y});triggerRefresh()}catch(err){toast(errorText(err),true)}});
  }
- function fitView(animate=true){if(!cy||!nodes.length)return;const els=cy.elements();if(animate)cy.animate({fit:{eles:els,padding:70},duration:260,complete:clampZoom});else{cy.fit(els,70);clampZoom()}}
+ function fitView(animate=true){if(!cy||!displayData().nodes.length)return;const els=cy.elements();if(animate)cy.animate({fit:{eles:els,padding:70},duration:260,complete:clampZoom});else{cy.fit(els,70);clampZoom()}}
  function clampZoom(){if(!cy)return;const max=1.4;if(cy.zoom()>max){const bb=cy.elements().boundingBox();cy.zoom({level:max,position:{x:(bb.x1+bb.x2)/2,y:(bb.y1+bb.y2)/2}});cy.center(cy.elements())}}
  function edgeColor(ele){const w=Number(ele.data("weight"));return w===0?COLOR.zero:(Number(ele.data("sign"))>0?COLOR.pos:COLOR.neg)}
  function renderGraph(){
   if(!cy)return;
+  const {nodes,edges}=displayData();
   const zoom=cy.zoom(),pan=cy.pan(),had=cy.nodes().length;
   const list=nodes.map(n=>({group:"nodes",data:{id:n.id,label:n.label,category:n.category},position:{x:Number(n.pos_x)||0,y:Number(n.pos_y)||0}}));
   edges.forEach(e=>{if(getNode(e.source_id)&&getNode(e.target_id))list.push({group:"edges",data:{id:e.id,source:e.source_id,target:e.target_id,weight:Number(e.weight),sign:Number(e.sign)}})});
   const before=new Set(cy.nodes().map(n=>n.id()));
   cy.batch(()=>{cy.elements().remove();cy.add(list)});
+  if(reviewedSnapshot)cy.nodes().ungrabify();else cy.nodes().grabify();
   if(!had&&nodes.length)fitView(false);
   else if(nodes.length){cy.zoom(zoom);cy.pan(pan);
    const ext=cy.extent();const fresh=cy.nodes().filter(n=>!before.has(n.id()));
@@ -830,11 +847,13 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  function revealOnMobile(eles){if(!cy||!isMobile()||!eles||!eles.length)return;const h=$("rede").clientHeight;cy.animate({center:{eles},duration:200,complete:()=>cy.animate({panBy:{x:0,y:-h*0.33},duration:160})})}
  function closePanel(){panelMode="";editingNode="";const p=$("panel");p.classList.remove("open");p.setAttribute("aria-hidden","true");$("stage").classList.remove("panel-open");if(cy)cy.edges().unselect()}
  function openNewNode(category){
+  if(!canEdit())return;
   editingNode="";openPanel("node-new","Novo conceito","Palavra ou expressão e categoria");
   $("nodeLabel").value="";$("nodeCategory").value=category||"S";$("nodeDeleteBtn").hidden=true;$("nodeSaveBtn").textContent="Adicionar";
   setTimeout(()=>$("nodeLabel").focus(),120);
  }
  function openEditNode(id){
+  if(!canEdit())return toast("Prévia somente para leitura.",true);
   const n=getNode(id);if(!n)return;editingNode=id;hideNodePop();
   openPanel("node-edit","Editar conceito",n.created_by?"Inserido por "+n.created_by:"");
   $("nodeLabel").value=n.label;$("nodeCategory").value=n.category;$("nodeDeleteBtn").hidden=false;$("nodeSaveBtn").textContent="Salvar";
@@ -842,6 +861,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   setTimeout(()=>$("nodeLabel").focus(),120);
  }
  function openEdgePanel(source,target,fromGraph=false){
+  if(!canEdit())return toast("Prévia somente para leitura.",true);
   hideNodePop();
   $("source").value=source||"";$("target").value=target||"";
   const e=source&&target?getEdge(source,target):null;
@@ -862,6 +882,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
 
  /* matrix */
  function renderMatrix(){
+  const {nodes}=displayData();
   const root=$("matrixContent");
   if(!nodes.length){root.innerHTML='<div class="empty"><b>A matriz nasce do primeiro conceito</b>Adicione conceitos na aba Rede ou DPSIR.</div>';return}
   const wrap=document.createElement("div");wrap.className="mwrap";
@@ -880,7 +901,11 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
      if(v===0){const sp=document.createElement("span");sp.className="zero";sp.textContent="0";btn.appendChild(sp)}
      else{btn.textContent=signedLabel(e.sign,e.weight);btn.style.background=v>0?"rgba(43,140,118,"+(0.08+alpha*0.42).toFixed(2)+")":"rgba(196,103,77,"+(0.08+alpha*0.42).toFixed(2)+")";btn.style.color=alpha>.6?"#fff":(v>0?"#1E6C5A":"#8F4530")}}
     else{const sp=document.createElement("span");sp.className="none";sp.textContent="·";btn.appendChild(sp)}
-    btn.addEventListener("click",()=>{if(!canEdit())return toast("Edições pausadas pelo facilitador.",true);openEdgePanel(a.id,b.id)});
+    btn.addEventListener("click",()=>{
+     if(reviewedSnapshot)return toast(a.label+" → "+b.label+": "+(e?signedLabel(e.sign,e.weight)+"/100":"sem ligação")+". Restaure o arquivo para editar.");
+     if(!canEdit())return toast("Edições pausadas pelo facilitador.",true);
+     openEdgePanel(a.id,b.id)
+    });
     td.appendChild(btn);tr.appendChild(td)});
    tbody.appendChild(tr)});
   table.appendChild(tbody);wrap.appendChild(table);root.replaceChildren(wrap);
@@ -888,11 +913,13 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
 
  /* DPSIR */
  function renderDpsir(){
+  const {nodes,edges}=displayData();
   const lanes=$("lanes");lanes.replaceChildren();
   Object.entries(cat).forEach(([k,c])=>{const lane=document.createElement("div");lane.className="lane";
    const h=document.createElement("h3");h.innerHTML='<i style="background:'+c.color+'"></i>'+k+" · "+c.name;const n=nodes.filter(x=>x.category===k);const cnt=document.createElement("span");cnt.className="n";cnt.textContent=n.length;h.appendChild(cnt);
    const d=document.createElement("div");d.className="d";d.textContent=c.detail;lane.append(h,d);
-   n.forEach(x=>{const b=document.createElement("button");b.type="button";b.className="card";b.textContent=x.label;b.title="Editar";b.addEventListener("click",()=>{if(!canEdit())return toast("Edições pausadas pelo facilitador.",true);openEditNode(x.id)});lane.appendChild(b)});
+   n.forEach(x=>{const b=document.createElement("button");b.type="button";b.className="card";b.textContent=x.label;b.title="Editar";b.addEventListener("click",()=>{if(reviewedSnapshot){switchView("rede");selectNode(x.id);return}
+      if(!canEdit())return toast("Edições pausadas pelo facilitador.",true);openEditNode(x.id)});lane.appendChild(b)});
    const add=document.createElement("button");add.type="button";add.className="add";add.textContent="+ conceito";add.addEventListener("click",()=>{if(!canEdit())return toast("Edições pausadas pelo facilitador.",true);openNewNode(k)});lane.appendChild(add);
    lanes.appendChild(lane)});
   const paths=$("paths");paths.replaceChildren();
@@ -903,12 +930,13 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    r1.innerHTML='<i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+cat[a.category].color+'"></i>'+escapeHtml(a.label)+' <span style="color:var(--muted)">→</span> <i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+cat[b.category].color+'"></i>'+escapeHtml(b.label)+'<span class="w '+(v===0?"zero":v>0?"pos":"neg")+'">'+signedLabel(e.sign,e.weight)+'</span>';
    btn.appendChild(r1);
    if(e.note){const r2=document.createElement("div");r2.className="r2";r2.textContent=e.note;btn.appendChild(r2)}
-   btn.addEventListener("click",()=>{if(!canEdit())return toast("Edições pausadas pelo facilitador.",true);openEdgePanel(e.source_id,e.target_id)});
+   btn.addEventListener("click",()=>{if(reviewedSnapshot)return toast("Prévia: "+a.label+" → "+b.label+" ("+signedLabel(e.sign,e.weight)+"/100). Restaure para editar.");
+     if(!canEdit())return toast("Edições pausadas pelo facilitador.",true);openEdgePanel(e.source_id,e.target_id)});
    paths.appendChild(btn)});
  }
 
  /* charts, snapshots and import */
- function resultData(){return reviewedSnapshot||{nodes,edges}}
+ function resultData(){return displayData()}
  function sortedLinks(ascending=false){
    const o=resultData(),byId=new Map(o.nodes.map(n=>[n.id,n])),filter=$("forceFilter").value;
    return o.edges.filter(e=>{
@@ -969,9 +997,14 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    return {nodes:value.nodes,edges:value.edges}
  }
  function showReview(payload,title){
-   reviewedSnapshot=validSnapshotFile(payload);reviewLabel=title;
-   switchView("resultados");renderResults();
-   $("previewBanner").hidden=false;window.scrollTo?.(0,0);
+   const parsed=validSnapshotFile(payload);
+   closePanel();hideNodePop();endLink();
+   reviewedSnapshot=parsed;reviewLabel=title;
+   $("previewBanner").hidden=false;
+   $("previewCount").textContent=parsed.nodes.length+" conceitos · "+parsed.edges.length+" ligações · Prévia da rede, matriz, DPSIR e gráficos. A sala atual permanece intacta.";
+   updateAll();applyLock();
+   switchView("rede");
+   toast("Arquivo carregado. Rede, matriz, DPSIR e resultados disponíveis.");
  }
  async function loadSnapshots(){
    const root=$("savedSnapshots");if(!root)return;
@@ -1003,8 +1036,14 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    if(file.size>900000)return toast("O JSON precisa ter menos de 900 KB.",true);
    try{const json=JSON.parse(await file.text());latestSnapshotFile=null;showReview(json,file.name);toast("Arquivo carregado. Nada foi alterado na sala.")}catch(err){toast("Não foi possível abrir: "+errorText(err),true)}
  });
- $("returnLiveBtn").addEventListener("click",()=>{reviewedSnapshot=null;reviewLabel="";latestSnapshotFile=null;renderResults();toast("Exibindo a rede ao vivo.")});
+ $("returnLiveBtn").addEventListener("click",()=>{
+   reviewedSnapshot=null;reviewLabel="";latestSnapshotFile=null;
+   $("previewBanner").hidden=true;closePanel();hideNodePop();
+   updateAll();applyLock();switchView("rede");
+   toast("Rede, matriz e resultados voltaram aos dados da sala ao vivo.");
+ });
  $("saveSnapshotBtn").addEventListener("click",async()=>{
+   if(reviewedSnapshot)return toast("Restaure o JSON na sala antes de arquivar esta versão.",true);
    if(!isFacilitator){updateAdminState();$("adminDialog").showModal();return toast("Ative o modo facilitador para arquivar.",true)}
    const name=prompt("Nome da versão da oficina:","Oficina Pantanal · "+new Date().toLocaleDateString("pt-BR"));
    if(name===null)return;
@@ -1018,7 +1057,8 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    try{
      await api("import_snapshot",{payload:reviewedSnapshot});
      reviewedSnapshot=null;reviewLabel="";latestSnapshotFile=null;
-     triggerRefresh();await load();await loadSnapshots();renderResults();
+     $("previewBanner").hidden=true;
+     renderSignature="";triggerRefresh();await load();updateAll();applyLock();await loadSnapshots();
      toast("Projeto restaurado na sala coletiva.");switchView("rede");
    }catch(err){toast(errorText(err),true)}finally{button.disabled=false}
  });
@@ -1034,9 +1074,13 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  tabs.forEach((btn,i)=>{btn.addEventListener("click",()=>switchView(btn.dataset.view));btn.addEventListener("keydown",e=>{if(e.key==="ArrowRight"||e.key==="ArrowLeft"){e.preventDefault();const j=(i+(e.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length;tabs[j].focus();switchView(tabs[j].dataset.view)}})});
 
  /* actions */
- $("newNodeBtn").addEventListener("click",()=>openNewNode());
- $("dpsirNewNode").addEventListener("click",()=>openNewNode());
- $("newEdgeBtn").addEventListener("click",()=>{if(nodes.length<2)return toast("Adicione pelo menos dois conceitos.",true);openEdgePanel(selectedNode||"","")});
+ $("newNodeBtn").addEventListener("click",()=>{if(canEdit())openNewNode()});
+ $("dpsirNewNode").addEventListener("click",()=>{if(canEdit())openNewNode()});
+ $("newEdgeBtn").addEventListener("click",()=>{
+    if(!canEdit())return;
+    if(nodes.length<2)return toast("Adicione pelo menos dois conceitos.",true);
+    openEdgePanel(selectedNode||"","")
+ });
  $("panelClose").addEventListener("click",closePanel);
  $("popEdit").addEventListener("click",()=>openEditNode(selectedNode));
  $("popLink").addEventListener("click",()=>{if(nodes.length<2)return toast("Adicione outro conceito para ligar.",true);startLink(selectedNode)});
@@ -1044,21 +1088,21 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  $("nodeDeleteBtn").addEventListener("click",()=>deleteNode(editingNode));
  document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(linkFrom)endLink();else if(!$("nodePop").hidden)hideNodePop();else if(panelMode)closePanel()}});
 
- $("nodeForm").addEventListener("submit",async e=>{e.preventDefault();const label=$("nodeLabel").value.trim(),category=$("nodeCategory").value;if(label.length<2)return msg("nodeMsg","Escreva pelo menos duas letras.",true);
+ $("nodeForm").addEventListener("submit",async e=>{e.preventDefault();if(!canEdit())return toast("Prévia somente para leitura. Restaure para editar.",true);const label=$("nodeLabel").value.trim(),category=$("nodeCategory").value;if(label.length<2)return msg("nodeMsg","Escreva pelo menos duas letras.",true);
   $("nodeSaveBtn").disabled=true;msg("nodeMsg","Salvando…");
   try{
    if(editingNode){await api("update_node",{id:editingNode,label,category});triggerRefresh();await load();toast("Conceito atualizado.");closePanel()}
    else{await api("add_node",{label,category});$("nodeLabel").value="";triggerRefresh();await load();msg("nodeMsg","Adicionado. Pode inserir outro.");$("nodeLabel").focus()}
   }catch(err){msg("nodeMsg",errorText(err),true)}finally{$("nodeSaveBtn").disabled=!canEdit()}});
- async function deleteNode(id){const n=getNode(id);if(!n)return;if(!await confirmDialog("Excluir conceito","Excluir \""+n.label+"\" e todas as ligações dele?"))return;
+ async function deleteNode(id){if(!canEdit())return toast("Prévia somente para leitura.",true);const n=getNode(id);if(!n)return;if(!await confirmDialog("Excluir conceito","Excluir \""+n.label+"\" e todas as ligações dele?"))return;
   try{await api("delete_node",{id});hideNodePop();closePanel();triggerRefresh();await load();toast("Conceito excluído.")}catch(e){toast(errorText(e),true)}}
 
- $("edgeForm").addEventListener("submit",async e=>{e.preventDefault();const s=$("source").value,t=$("target").value;
+ $("edgeForm").addEventListener("submit",async e=>{e.preventDefault();if(!canEdit())return toast("Prévia somente para leitura. Restaure para editar.",true);const s=$("source").value,t=$("target").value;
   if(!s||!t)return msg("edgeMsg","Escolha origem e destino.",true);if(s===t)return msg("edgeMsg","Origem e destino devem ser diferentes.",true);
   $("saveEdgeBtn").disabled=true;msg("edgeMsg","Salvando…");
   try{await api("upsert_edge",{source:s,target:t,weight:clamp100($("weightNumber").value)/100,sign:Number($("sign").value),note:$("edgeNote").value.trim()});triggerRefresh();await load();syncEdgeFields();msg("edgeMsg","Ligação salva.");toast("Ligação salva.")}
   catch(err){msg("edgeMsg",errorText(err),true)}finally{$("saveEdgeBtn").disabled=!canEdit()}});
- $("deleteEdgeBtn").addEventListener("click",async()=>{const s=$("source").value,t=$("target").value,a=getNode(s),b=getNode(t);if(!a||!b)return;
+ $("deleteEdgeBtn").addEventListener("click",async()=>{if(!canEdit())return toast("Prévia somente para leitura.",true);const s=$("source").value,t=$("target").value,a=getNode(s),b=getNode(t);if(!a||!b)return;
   if(!await confirmDialog("Excluir ligação","Remover a ligação "+a.label+" → "+b.label+"?"))return;
   try{await api("delete_edge",{source:s,target:t});triggerRefresh();await load();closePanel();toast("Ligação removida.")}catch(e){toast(errorText(e),true)}});
  $("weight").addEventListener("input",()=>setWeight($("weight").value));
@@ -1070,7 +1114,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  $("zoomIn").addEventListener("click",()=>{if(cy)cy.animate({zoom:cy.zoom()*1.25,duration:160})});
  $("zoomOut").addEventListener("click",()=>{if(cy)cy.animate({zoom:cy.zoom()/1.25,duration:160})});
  $("fitBtn").addEventListener("click",()=>fitView());
- $("layoutBtn").addEventListener("click",()=>{if(!cy||!nodes.length)return;cy.layout({name:"cose",animate:true,animationDuration:650,fit:true,padding:70,nodeRepulsion:()=>900000,idealEdgeLength:()=>170,stop:clampZoom}).run();toast("Rede reorganizada nesta tela. Arraste um conceito para fixar a posição para todos.")});
+ $("layoutBtn").addEventListener("click",()=>{if(!cy||!displayData().nodes.length)return;cy.layout({name:"cose",animate:true,animationDuration:650,fit:true,padding:70,nodeRepulsion:()=>900000,idealEdgeLength:()=>170,stop:clampZoom}).run();toast("Rede reorganizada nesta tela. Arraste um conceito para fixar a posição para todos.")});
  $("fullscreenBtn").addEventListener("click",()=>{if(document.fullscreenElement)document.exitFullscreen();else if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>toast("Tela cheia indisponível neste navegador.",true));else toast("Tela cheia indisponível neste navegador.",true)});
  document.addEventListener("fullscreenchange",()=>{document.body.classList.toggle("present",!!document.fullscreenElement);if(document.fullscreenElement)closePanel();setTimeout(()=>{if(cy){cy.resize();fitView(false)}},120)});
  document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>$(b.dataset.close).close()));
@@ -1103,6 +1147,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  function csv(rows){return "﻿"+rows.map(r=>r.map(csvCell).join(";")).join("\r\n")}
  function download(filename,contents,type){const blob=new Blob([contents],{type}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)}
  function exportKind(kind){
+  const {nodes,edges}=displayData();
   if(kind==="nodes")download("pantanal-conceitos.csv",csv([["ID","Conceito","Categoria","Autor","Última edição por"],...nodes.map(n=>[n.id,n.label,n.category,n.created_by,n.updated_by])]),"text/csv;charset=utf-8");
   if(kind==="edges")download("pantanal-ligacoes.csv",csv([["Origem","Origem DPSIR","Destino","Destino DPSIR","Sinal","Intensidade de 0 a 100","Peso assinado de -100 a +100","Peso fuzzy de -1 a +1","Justificativa","Editado por"],...edges.map(e=>[getNode(e.source_id)?.label,getNode(e.source_id)?.category,getNode(e.target_id)?.label,getNode(e.target_id)?.category,e.sign,Math.round(Number(e.weight)*100),signedValue(e),(Number(e.sign)*Number(e.weight)).toFixed(2),e.note,e.updated_by])]),"text/csv;charset=utf-8");
   if(kind==="matrix")download("pantanal-matriz-assinada.csv",csv([["Origem \\ Destino (escala assinada -100 a +100)",...nodes.map(n=>n.label)],...nodes.map(a=>[a.label,...nodes.map(b=>{const e=getEdge(a.id,b.id);return e?String(signedValue(e)):""})])]),"text/csv;charset=utf-8");
