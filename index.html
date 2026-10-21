@@ -219,10 +219,29 @@ table.matrix td.self{background:#F3F5F4}
 .res-empty{font-size:13px;color:var(--muted);padding:12px 0}
 @media(max-width:720px){.nav button{font-size:11px;padding:7px 2px}.res-grid{grid-template-columns:1fr}.res-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.result-box{padding:13px}.preview-banner{align-items:flex-start;flex-direction:column}.res-actions .btn{font-size:12px;padding:0 8px}.res-filter .muted{width:100%}}
 /* Welcome */
-.welcome{position:absolute;inset:0;display:grid;place-items:center;padding:24px}
-.welcome div{max-width:420px;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:32px 28px;box-shadow:var(--shadow-1)}
-.welcome h1{margin:0 0 6px;font-size:20px;color:var(--navy);font-weight:600}
-.welcome p{margin:0;color:var(--muted);font-size:13.5px}
+.welcome{position:absolute;inset:0;display:grid;place-items:start center;padding:clamp(18px,5vh,60px) 18px;z-index:25;overflow:auto;background:var(--bg)}
+.welcome .lobby-card{width:min(100%,650px);text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:17px;padding:clamp(18px,4vw,32px);box-shadow:var(--shadow-1)}
+.welcome h1{margin:0 0 5px;font-size:24px;color:var(--navy);font-weight:600}
+.welcome p{margin:0 0 15px;color:var(--muted);font-size:13px}
+.lobby-group{border-top:1px solid var(--line);padding-top:18px;margin-top:18px}
+.lobby-group h2{font-size:15px;font-weight:650;margin:0 0 10px;color:var(--navy)}
+.lobby-flex{display:flex;gap:8px;align-items:center}
+.lobby-flex input{min-width:0;flex:1;height:40px;padding:0 12px;border:1px solid var(--line-2);border-radius:8px}
+.lobby-flex .btn{height:40px;flex:none}
+.lobby-card label{font-size:12px;color:var(--ink-2);display:block;margin-bottom:5px}
+.lobby-card input[type=text],.lobby-card input[type=password]{min-width:0;width:100%;padding:10px;border:1px solid var(--line-2);border-radius:8px;background:#fff}
+.lobby-card input[type=checkbox]{accent-color:var(--teal)}
+.lobby-check{display:flex;gap:8px;align-items:start;margin:10px 0}
+.lobby-check label{display:inline;line-height:1.4}
+.lobby-recent{display:grid;gap:7px;margin:10px 0}
+.lobby-room{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);padding:10px 12px;border-radius:9px;background:#fff;text-align:left;width:100%}
+.lobby-room:hover{border-color:var(--sage);background:var(--bg)}
+.lobby-room .rtitle{font-weight:600;font-size:12.5px;color:var(--navy)}
+.lobby-room .rcode{font-size:11px;color:var(--teal);font-variant-numeric:tabular-nums;letter-spacing:.08em}
+.lobby-error{min-height:17px;margin:10px 0;color:var(--terra);font-size:12px}
+.room-indicator{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--teal);border:1px solid var(--line);border-radius:15px;padding:4px 9px;white-space:nowrap}
+@media(max-width:720px){.welcome{padding:12px 9px}.welcome .lobby-card{padding:18px}.lobby-flex{flex-wrap:wrap}.lobby-flex .btn{flex:1}.room-indicator{max-width:100px;overflow:hidden;text-overflow:ellipsis}.welcome h1{font-size:20px}}
+
 
 /* Dialogs */
 dialog{border:1px solid var(--line);border-radius:16px;padding:0;width:min(420px,calc(100% - 32px));box-shadow:var(--shadow-2);color:var(--ink);background:var(--surface)}
@@ -298,7 +317,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
 </svg>
 
 <header class="top">
-  <div class="brand"><b>Pantanal Vivo</b><span>Laboratório DPSIR</span></div>
+  <div class="brand"><b>Pantanal Vivo</b><span id="roomTitle">Laboratório DPSIR</span></div>
   <nav class="nav" role="tablist" aria-label="Seções">
     <button role="tab" aria-selected="true" data-view="rede" id="tab-rede">Rede</button>
     <button role="tab" aria-selected="false" data-view="matriz" id="tab-matriz">Matriz</button>
@@ -307,6 +326,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
     <button role="tab" aria-selected="false" data-view="sobre" id="tab-sobre">Sobre</button>
   </nav>
   <div class="actions">
+    <button class="btn quiet" id="roomsBtn" title="Trocar ou criar sala">Salas</button>
     <span class="status" id="connStatus" title="Estado da conexão"><i></i><span class="lbl">conectando</span></span>
     <button class="btn" id="qrBtn" title="QR Code de entrada"><svg><use href="#i-qr"/></svg><span class="lbl">QR Code</span></button>
     <button class="btn" id="fullscreenBtn" title="Modo apresentação"><svg><use href="#i-full"/></svg><span class="lbl">Apresentar</span></button>
@@ -506,7 +526,37 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
     <div class="who"><label for="author">Seu nome</label><input type="text" id="author" maxlength="40" placeholder="opcional" autocomplete="nickname"></div>
   </aside>
 
-  <div class="welcome" id="welcome" hidden><div><h1>Pantanal Vivo</h1><p>Entre pelo link ou QR Code fornecido pelo facilitador para participar da construção coletiva.</p></div></div>
+  <div class="welcome" id="welcome" hidden>
+    <div class="lobby-card">
+      <span class="room-indicator">◌ Oficina colaborativa · DPSIR</span>
+      <h1 style="margin-top:12px">Suas salas do Pantanal</h1>
+      <p>Crie uma turma, compartilhe o código e continue o trabalho em outro dia. Tudo fica salvo automaticamente.</p>
+      <div class="lobby-group"><h2>Entrar com um código</h2>
+        <form id="joinRoomForm" class="lobby-flex">
+          <input type="text" id="joinCode" maxlength="11" autocomplete="off" autocapitalize="characters" placeholder="Ex.: ABCD2345" aria-label="Código da sala" required>
+          <button class="btn primary" type="submit" id="joinRoomBtn">Entrar</button>
+        </form>
+        <div id="joinRoomError" class="lobby-error" aria-live="polite"></div>
+      </div>
+      <div class="lobby-group"><h2>Criar uma nova sala</h2>
+        <form id="createRoomForm">
+          <label for="newRoomTitle">Nome da turma ou grupo</label>
+          <input type="text" id="newRoomTitle" required minlength="3" maxlength="90" placeholder="Ex.: Grupo 2 · Dinâmica das águas">
+          <label for="masterKey" style="margin-top:11px">Chave do facilitador</label>
+          <input type="password" id="masterKey" autocomplete="off" placeholder="Somente o professor">
+          <div class="lobby-check"><input id="rememberMaster" type="checkbox"><label for="rememberMaster">Lembrar chave neste aparelho (não use em celular compartilhado)</label></div>
+          <button class="btn primary" type="submit" id="createRoomBtn" style="width:100%;height:41px">+ Criar sala e gerar código</button>
+        </form>
+        <div id="createRoomError" class="lobby-error" aria-live="polite"></div>
+      </div>
+      <div class="lobby-group">
+        <div class="lobby-flex" style="justify-content:space-between"><h2 style="margin:0">Salas salvas</h2><button class="btn" id="allRoomsBtn">Ver todas as minhas salas</button></div>
+        <p class="muted" style="margin-top:7px">Salas recentes neste aparelho; para listar todas, informe a chave de facilitador acima.</p>
+        <div id="lobbyRooms" class="lobby-recent"></div>
+        <button class="btn" id="originalRoomBtn" style="width:100%;margin-top:8px">Abrir oficina principal (legado)</button>
+      </div>
+    </div>
+  </div>
 </main>
 
 <dialog id="qrDialog"><div class="dbody"><div class="dhead"><h2>Entrar na sala</h2><button class="btn quiet icon" data-close="qrDialog" aria-label="Fechar"><svg><use href="#i-x"/></svg></button></div><p>Aponte a câmera do celular. Todos entram na mesma sala, sem cadastro.</p><div id="qrcode"></div><div class="url" id="joinLink"></div><button class="btn primary" id="copyJoin" style="width:100%">Copiar link</button><p class="note">Compartilhe apenas este link. O acesso de facilitador é separado.</p></div></dialog>
@@ -539,12 +589,14 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  const DEFAULT_ROOM="fa06cb51-0894-4d37-9f58-397555a9cacb";
  const DEFAULT_KEY="rrNGA2qnX8VkC70ZOJZNqFdsBFIo1erU";
  const supplied=!!(params.get("room")&&params.get("key"));
- const ROOM=supplied?params.get("room"):DEFAULT_ROOM;
- const KEY=supplied?params.get("key"):DEFAULT_KEY;
- const adminStore="pantdpsir-facilitador-"+ROOM;
- let ADMIN=params.get("admin")||sessionStorage.getItem(adminStore)||"";
+ const ROOM_CODE=(params.get("s")||"").trim().toUpperCase().replaceAll("-","").replaceAll(" ","");
+ let ROOM=supplied?params.get("room"):"";
+ let KEY=supplied?params.get("key"):"";
+ const masterStore="pantdpsir-master-device";
+ const sessionMaster="pantdpsir-master-session";
+ let ADMIN=params.get("admin")||sessionStorage.getItem(sessionMaster)||localStorage.getItem(masterStore)||"";
  let isFacilitator=!!ADMIN;
- const joinUrl=location.origin+location.pathname+(supplied&&ROOM!==DEFAULT_ROOM?"?room="+encodeURIComponent(ROOM)+"&key="+encodeURIComponent(KEY):"");
+ const joinUrl=location.origin+location.pathname+(ROOM_CODE?"?s="+encodeURIComponent(ROOM_CODE):"?room="+encodeURIComponent(ROOM)+"&key="+encodeURIComponent(KEY));
  const $=id=>document.getElementById(id);
  const cat={
   D:{name:"Forças motrizes",detail:"Processos sociais e econômicos",color:"#6E6AA6"},
@@ -573,6 +625,81 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  function getNode(id){return nodes.find(n=>n.id===id)}
  function getEdge(s,t){return edges.find(e=>e.source_id===s&&e.target_id===t)}
  const canEdit=()=>!(locked&&!isFacilitator);
+ const RECENT_KEY="pantdpsir-recent-rooms";
+ const readRecent=()=>{try{const value=JSON.parse(localStorage.getItem(RECENT_KEY)||"[]");return Array.isArray(value)?value.slice(0,30):[]}catch{return []}};
+ function saveRecent(roomCode,roomTitle){
+   if(!roomCode)return;
+   const recent=[{code:roomCode,title:roomTitle||"Sala do Pantanal",last:new Date().toISOString()},...readRecent().filter(x=>x.code!==roomCode)].slice(0,30);
+   localStorage.setItem(RECENT_KEY,JSON.stringify(recent));
+ }
+ function renderLobbyRooms(items=readRecent()){
+   const root=$("lobbyRooms");root.replaceChildren();
+   if(!items.length){const p=document.createElement("p");p.className="muted";p.textContent="Nenhuma sala registrada neste aparelho.";root.appendChild(p);return}
+   for(const r of items){
+     const btn=document.createElement("button");btn.className="lobby-room";
+     const info=document.createElement("span");const t=document.createElement("span");t.className="rtitle";t.textContent=r.title||"Sala do Pantanal";
+     const code=document.createElement("span");code.className="rcode";code.textContent=r.code;
+     info.append(t,document.createElement("br"),code);btn.append(info);
+     const mark=document.createElement("span");mark.textContent="Abrir →";mark.className="muted";btn.append(mark);
+     btn.addEventListener("click",()=>openRoomByCode(r.code));root.appendChild(btn)
+   }
+ }
+ function lobbyMessage(id,s){$(id).textContent=s}
+ async function openRoomByCode(code){
+   const normalized=String(code||"").trim().toUpperCase().replaceAll("-","").replaceAll(" ","");
+   if(!/^[A-HJ-NP-Z2-9]{8}$/.test(normalized))return lobbyMessage("joinRoomError","Código inválido: digite os 8 caracteres da sala.");
+   $("joinRoomBtn").disabled=true;lobbyMessage("joinRoomError","Conferindo a sala…");
+   try{
+     const result=await api("resolve_room",{code:normalized});
+     saveRecent(normalized,result.room.title);
+     location.assign(location.origin+location.pathname+"?s="+encodeURIComponent(normalized));
+   }catch(err){lobbyMessage("joinRoomError",errorText(err))}
+   finally{$("joinRoomBtn").disabled=false}
+ }
+ async function listAllRooms(){
+   const secret=$("masterKey").value.trim()||sessionStorage.getItem(sessionMaster)||localStorage.getItem(masterStore)||"";
+   if(!secret)return lobbyMessage("createRoomError","Informe a chave do facilitador para listar todas as salas.");
+   $("allRoomsBtn").disabled=true;
+   try{
+     const info=await api("list_rooms",{master:secret});
+     sessionStorage.setItem(sessionMaster,secret);
+     if($("rememberMaster").checked)localStorage.setItem(masterStore,secret);
+     const items=(info.rooms||[]).map(r=>({code:r.room_code,title:r.title,last:r.created_at}));
+     renderLobbyRooms(items);
+     if(!items.length)lobbyMessage("createRoomError","Nenhuma sala criada ainda.");
+     else lobbyMessage("createRoomError",items.length+" salas encontradas no banco.");
+   }catch(err){lobbyMessage("createRoomError",errorText(err))}
+   finally{$("allRoomsBtn").disabled=false}
+ }
+ async function initializeRoom(){
+   $("masterKey").value=sessionStorage.getItem(sessionMaster)||localStorage.getItem(masterStore)||"";
+   $("rememberMaster").checked=!!localStorage.getItem(masterStore);
+   renderLobbyRooms();
+   if(supplied){
+     startWorkspace();
+     return;
+   }
+   if(ROOM_CODE){
+     try{
+       const info=await api("resolve_room",{code:ROOM_CODE});
+       ROOM=info.room.id;KEY=ROOM_CODE;
+       saveRecent(ROOM_CODE,info.room.title);
+       $("roomTitle").textContent=info.room.title;
+       startWorkspace();return;
+     }catch(err){
+       $("welcome").hidden=false;
+       $("joinCode").value=ROOM_CODE;
+       lobbyMessage("joinRoomError","Não foi possível abrir a sala: "+errorText(err));
+       return;
+     }
+   }
+   $("welcome").hidden=false;
+   if($("masterKey").value)listAllRooms();
+ }
+ function startWorkspace(){
+   $("welcome").hidden=true;
+   initGraph();live();load();setInterval(()=>{if(!document.hidden)load()},7000);
+ }
  function confirmDialog(title,text,yes="Excluir"){return new Promise(res=>{const d=$("confirmDialog");$("confirmTitle").textContent=title;$("confirmText").textContent=text;$("confirmYes").textContent=yes;const done=v=>{d.close();$("confirmYes").onclick=null;$("confirmNo").onclick=null;d.oncancel=null;res(v)};$("confirmYes").onclick=()=>done(true);$("confirmNo").onclick=()=>done(false);d.oncancel=e=>{e.preventDefault();done(false)};d.showModal();$("confirmNo").focus()})}
 
  /* backend */
@@ -593,10 +720,11 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   try{
    const data=await api("load");
    setConn("on","ao vivo");
+   if(data.title)$("roomTitle").textContent=data.title;
    locked=!!data.locked;
    isFacilitator=!!data.admin;
-   if(isFacilitator&&ADMIN)sessionStorage.setItem(adminStore,ADMIN);
-   else if(ADMIN){ADMIN="";sessionStorage.removeItem(adminStore)}
+   if(isFacilitator&&ADMIN)sessionStorage.setItem(sessionMaster,ADMIN);
+   else if(ADMIN){ADMIN="";sessionStorage.removeItem(sessionMaster);localStorage.removeItem(masterStore)}
    updateAdminState();
    const sig=JSON.stringify([data.nodes,data.edges,locked]);
    if(!loaded||sig!==renderSignature){nodes=data.nodes||[];edges=data.edges||[];renderSignature=sig;updateAll()}
@@ -949,13 +1077,13 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   try{
    const data=await api("load");
    if(!data.admin)throw new Error("Chave do facilitador incorreta.");
-   isFacilitator=true;sessionStorage.setItem(adminStore,secret);$("adminCode").value="";
+   isFacilitator=true;sessionStorage.setItem(sessionMaster,secret);$("adminCode").value="";
    updateAdminState();applyLock();$("adminDialog").close();toast("Modo facilitador ativado.");
   }catch(err){ADMIN=old;toast(errorText(err),true)}
  });
  $("adminCode").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("activateAdmin").click()}});
  $("adminLogout").addEventListener("click",()=>{
-  ADMIN="";isFacilitator=false;sessionStorage.removeItem(adminStore);
+  ADMIN="";isFacilitator=false;sessionStorage.removeItem(sessionMaster);localStorage.removeItem(masterStore);
   updateAdminState();applyLock();$("adminDialog").close();toast("Modo participante ativo.");
  });
  $("lockBtn").addEventListener("click",async()=>{try{await api("lock",{locked:!locked});triggerRefresh();await load();toast(locked?"Edições pausadas.":"Edições liberadas.")}catch(e){toast(errorText(e),true)}});
@@ -983,11 +1111,29 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  }
  $("adminBtn").hidden=false;
  updateAdminState();
- window.addEventListener("DOMContentLoaded",()=>{
-  $("welcome").hidden=true;
-  initGraph();live();load();
-  setInterval(()=>{if(!document.hidden)load()},7000);
+ $("roomsBtn").addEventListener("click",()=>location.assign(location.origin+location.pathname));
+ $("joinRoomForm").addEventListener("submit",e=>{e.preventDefault();openRoomByCode($("joinCode").value)});
+ $("allRoomsBtn").addEventListener("click",listAllRooms);
+ $("originalRoomBtn").addEventListener("click",()=>{
+   location.assign(location.origin+location.pathname+"?room="+encodeURIComponent(DEFAULT_ROOM)+"&key="+encodeURIComponent(DEFAULT_KEY))
  });
+ $("createRoomForm").addEventListener("submit",async e=>{
+   e.preventDefault();const title=$("newRoomTitle").value.trim();
+   const secret=$("masterKey").value.trim()||sessionStorage.getItem(sessionMaster)||localStorage.getItem(masterStore)||"";
+   if(title.length<3)return lobbyMessage("createRoomError","Dê um nome à sua turma.");
+   if(!secret)return lobbyMessage("createRoomError","Informe a chave do facilitador.");
+   const btn=$("createRoomBtn");btn.disabled=true;lobbyMessage("createRoomError","Criando a sala…");
+   try{
+     const result=await api("create_room",{master:secret,title});
+     sessionStorage.setItem(sessionMaster,secret);
+     if($("rememberMaster").checked)localStorage.setItem(masterStore,secret);
+     else localStorage.removeItem(masterStore);
+     saveRecent(result.room.room_code,result.room.title);
+     location.assign(location.origin+location.pathname+"?s="+encodeURIComponent(result.room.room_code));
+   }catch(err){lobbyMessage("createRoomError",errorText(err))}
+   finally{btn.disabled=false}
+ });
+ window.addEventListener("DOMContentLoaded",initializeRoom);
 })();
 </script>
 </body>
