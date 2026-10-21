@@ -28,7 +28,7 @@ O endereço principal abre uma página de salas. A pessoa com a chave do **facil
 - **DPSIR:** forças motrizes, pressões, estado, impactos e respostas, com possibilidade de retroalimentações.
 - **Resultados:** gráficos de barras das dez ligações mais fortes e mais fracas; filtros positivas, negativas e peso zero; contagem e média das forças; ranking de conceitos pela soma das intensidades incidentes.
 - **Arquivos:** exportação JSON completo, CSV dos conceitos, das ligações e da matriz, além de PNG da rede.
-- **Importação:** abrir um arquivo JSON exportado anteriormente, **visualizar seus gráficos sem alterar a rede atual** e, como facilitador, **restaurá-lo na sala**.
+- **Importação integral:** abrir um arquivo JSON e reconstruir **a Rede, a Matriz assinada, o DPSIR e os gráficos da aba Resultados** com os dados desse arquivo. A prévia não altera o conteúdo da sala ao vivo; para passar à edição coletiva, o facilitador usa **Restaurar na sala**.
 - **Versões arquivadas:** facilitador guarda versões no servidor; os participantes podem visualizá-las na aba Resultados. Ao restaurar um arquivo, um backup da rede anterior é criado automaticamente.
 - **Sobre:** explicações metodológicas e limites científicos.
 
@@ -39,7 +39,7 @@ O endereço principal abre uma página de salas. A pessoa com a chave do **facil
 3. Selecione origem e destino; defina a **intensidade 0–100** e o **sinal**. Edição e exclusão têm confirmação.
 4. Discuta relações e hipóteses coletivas, consultando as abas **Matriz**, **DPSIR** e **Resultados**.
 5. Ao terminar, clique em **Exportar → Projeto completo (.json)**. Esse arquivo permite reabrir a oficina posteriormente.
-6. Para recuperar um projeto, use **Resultados → Importar JSON**. A pré-visualização não altera a sala. Para substituir o trabalho atual, entre no modo **Facilitador** e selecione **Restaurar na sala**; um backup é arquivado antes de restaurar.
+6. Para recuperar um projeto, use **Resultados → Importar JSON**. A plataforma abre a **aba Rede** com todos os nós e arestas do arquivo; visite **Matriz**, **DPSIR** e **Resultados** para conferir a análise completa. Uma faixa verde visível em todas as abas indica que você está na pré-visualização, sem alterar a sala ao vivo. Clique em **Voltar à sala ao vivo** para descartar a prévia, ou entre como **Facilitador** e selecione **Restaurar na sala** para substituir o trabalho atual (com backup automático).
 7. Para manter o histórico sem trocar de arquivo, entre em **Facilitador** e escolha **Resultados → Salvar versão**; as versões ficam listadas nessa aba.
 
 **Importante:** visitantes com o link público podem editar a rede, porque essa é uma oficina deliberadamente coletiva. Apenas o facilitador pode bloquear edições, reiniciar a sala, salvar versões ou restaurar um JSON. Não publique a chave privada de facilitador.
@@ -60,3 +60,7 @@ Os gráficos classificam os pesos atribuídos pelas pessoas, não correlações 
 - **Privacidade:** a plataforma usa nome/apelido opcional nas contribuições; evite registrar dados sensíveis.
 
 Se o GitHub Pages ainda não estiver configurado para este repositório vazio, entre em **Settings → Pages → Build and deployment → Source: GitHub Actions** e execute o workflow **Publicar Pantanal Vivo** na aba Actions. Feito isso, os pushes para `main` disparam novas publicações.
+
+## Formato do arquivo JSON
+
+O JSON preserva os **nós** (`nodes`), com IDs, rótulos, categorias DPSIR, coordenadas da rede e autoria, e as **ligações** (`edges`), com IDs de origem/destino, intensidade normalizada entre 0 e 1, sinal, justificativa e autoria. A plataforma reconstrói a **rede visual e sua matriz de adjacência assinada** a partir desses dados, sem necessidade de guardar uma segunda matriz redundante. Um arquivo JSON exportado pode ser importado novamente e analisado integralmente; durante a pré-visualização, a edição é bloqueada para não modificar a sala por engano.
