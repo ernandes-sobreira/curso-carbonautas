@@ -1029,11 +1029,11 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    }catch(err){root.replaceChildren();const p=document.createElement("div");p.className="res-empty";p.textContent="Não foi possível consultar arquivos: "+errorText(err);root.appendChild(p)}
  }
  $("forceFilter").addEventListener("change",renderResults);
- $("downloadJsonBtn").addEventListener("click",()=>{if(reviewedSnapshot)download("pantanal-versao-salva.json",JSON.stringify({...reviewedSnapshot,exported_at:new Date().toISOString()},null,2),"application/json");else exportKind("json")});
+ $("downloadJsonBtn").addEventListener("click",()=>exportKind("json"));
  $("uploadJsonBtn").addEventListener("click",()=>{$("importFile").value="";$("importFile").click()});
  $("importFile").addEventListener("change",async(e)=>{
    const file=e.target.files?.[0];if(!file)return;
-   if(file.size>900000)return toast("O JSON precisa ter menos de 900 KB.",true);
+   if(file.size>2500000)return toast("O JSON precisa ter menos de 2,5 MB.",true);
    try{const json=JSON.parse(await file.text());latestSnapshotFile=null;showReview(json,file.name);toast("Arquivo carregado. Nada foi alterado na sala.")}catch(err){toast("Não foi possível abrir: "+errorText(err),true)}
  });
  $("returnLiveBtn").addEventListener("click",()=>{
@@ -1146,12 +1146,56 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  function csvCell(v){return '"'+String(v??"").replace(/"/g,'""')+'"'}
  function csv(rows){return "﻿"+rows.map(r=>r.map(csvCell).join(";")).join("\r\n")}
  function download(filename,contents,type){const blob=new Blob([contents],{type}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)}
+ function buildCompleteJson(){
+  const {nodes,edges}=displayData();
+  const linkIndex=new Map(edges.map(e=>[e.source_id+"|"+e.target_id,e]));
+  const matrix=nodes.map(a=>nodes.map(b=>{
+   const e=linkIndex.get(a.id+"|"+b.id);
+   return e?signedValue(e):null; // null: relação ausente, 0: ligação registrada sem influência
+  }));
+  const intensity=(e)=>Math.round(Math.abs(Number(e.weight))*100);
+  const describe=e=>({
+    source_id:e.source_id,
+    source:getNode(e.source_id)?.label||e.source_id,
+    target_id:e.target_id,
+    target:getNode(e.target_id)?.label||e.target_id,
+    sign:Number(e.sign),
+    intensity:intensity(e),
+    signed_strength:signedValue(e)
+  });
+  const ranked=[...edges].sort((a,b)=>intensity(b)-intensity(a));
+  const average=edges.length?Math.round(edges.reduce((n,e)=>n+intensity(e),0)/edges.length):0;
+  return {
+    schema:"pantanal-vivo/dpsir/2",
+    title:reviewedSnapshot?(reviewLabel||"Pantanal Vivo / DPSIR"):"Pantanal Vivo / DPSIR",
+    exported_at:new Date().toISOString(),
+    method:"Mapa cognitivo causal fuzzy não calibrado",
+    weights:{ui:"intensidade 0 a 100",signed:"-100 a 100",fcm:"sinal × intensidade / 100"},
+    nodes,edges,
+    matrix:{
+      row_ids:nodes.map(n=>n.id),
+      column_ids:nodes.map(n=>n.id),
+      rows:"origens (causas)",columns:"destinos (efeitos)",
+      signed_weights:matrix,
+      missing_value:null
+    },
+    results:{
+      concepts:nodes.length,relationships:edges.length,
+      positive:edges.filter(e=>Number(e.sign)>0&&Number(e.weight)>0).length,
+      negative:edges.filter(e=>Number(e.sign)<0&&Number(e.weight)>0).length,
+      zero:edges.filter(e=>Number(e.weight)===0).length,
+      mean_intensity:average,
+      strongest:ranked.slice(0,10).map(describe),
+      weakest:[...ranked].reverse().slice(0,10).map(describe)
+    }
+  };
+ }
  function exportKind(kind){
   const {nodes,edges}=displayData();
   if(kind==="nodes")download("pantanal-conceitos.csv",csv([["ID","Conceito","Categoria","Autor","Última edição por"],...nodes.map(n=>[n.id,n.label,n.category,n.created_by,n.updated_by])]),"text/csv;charset=utf-8");
   if(kind==="edges")download("pantanal-ligacoes.csv",csv([["Origem","Origem DPSIR","Destino","Destino DPSIR","Sinal","Intensidade de 0 a 100","Peso assinado de -100 a +100","Peso fuzzy de -1 a +1","Justificativa","Editado por"],...edges.map(e=>[getNode(e.source_id)?.label,getNode(e.source_id)?.category,getNode(e.target_id)?.label,getNode(e.target_id)?.category,e.sign,Math.round(Number(e.weight)*100),signedValue(e),(Number(e.sign)*Number(e.weight)).toFixed(2),e.note,e.updated_by])]),"text/csv;charset=utf-8");
   if(kind==="matrix")download("pantanal-matriz-assinada.csv",csv([["Origem \\ Destino (escala assinada -100 a +100)",...nodes.map(n=>n.label)],...nodes.map(a=>[a.label,...nodes.map(b=>{const e=getEdge(a.id,b.id);return e?String(signedValue(e)):""})])]),"text/csv;charset=utf-8");
-  if(kind==="json")download("pantanal-dpsir-projeto.json",JSON.stringify({title:"Pantanal Vivo / DPSIR",exported_at:new Date().toISOString(),method:"Mapa cognitivo causal fuzzy não calibrado; peso fuzzy = sinal x intensidade / 100",nodes,edges},null,2),"application/json");
+  if(kind==="json")download("pantanal-dpsir-projeto.json",JSON.stringify(buildCompleteJson(),null,2),"application/json");
   if(kind==="png"){if(!cy||!nodes.length)return toast("Adicione conceitos à rede primeiro.",true);const a=document.createElement("a");a.href=cy.png({output:"base64uri",bg:"#ffffff",scale:2,full:true});a.download="pantanal-rede.png";a.click()}
   toast("Exportação preparada.");
  }
