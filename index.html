@@ -105,6 +105,24 @@ button:disabled{cursor:not-allowed;opacity:.45}
 .focus-panel .focus-empty{font-size:12px;color:var(--muted);padding:9px}
 .focus-panel .focus-footnote{font-size:11px;color:var(--muted);line-height:1.4;border-top:1px solid var(--line);padding-top:9px}
 @media(max-width:720px){.focus-panel{right:10px;top:57px;max-height:calc(100% - 166px);width:min(370px,calc(100% - 20px))}.focus-panel .focus-row .btn{font-size:12px}}
+/* Temas centrais: conceitos estruturantes independentes das cinco categorias DPSIR */
+.central-form{display:flex;gap:7px;align-items:center}
+.central-form input{flex:1;min-width:0;height:40px;border:1px solid var(--line-2);border-radius:8px;padding:0 10px;background:#fff}
+.central-form button{height:40px;flex-shrink:0}
+.central-list{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0}
+.central-pill{border:1px solid #bed7ca;background:#e7f2eb;border-radius:999px;padding:7px 10px;color:#123d34;font-size:12px;font-weight:650}
+.central-pill:hover{background:#cfebdc}
+.central-pill.selected{background:#123849;color:#fff}
+.central-layout{border:1px solid var(--line);border-radius:9px;padding:10px}
+.central-layout h3{margin:0 0 5px;font-size:12px;color:var(--navy)}
+.central-panel-notice{margin:4px 0;color:var(--muted);font-size:11px;line-height:1.45}
+.central-nodes-dpsir{border:1px solid #cdded5;background:#ecf5ee;border-radius:12px;padding:13px;margin-bottom:18px}
+.central-nodes-dpsir h2{margin:0 0 6px;font-size:14px;font-weight:650;color:var(--navy)}
+.central-nodes-dpsir .btn{margin:4px 6px 4px 0}
+.central-chip{border-radius:999px;background:#102b39;color:#fff;padding:7px 12px;font-size:12px;font-weight:600;border:1px solid #1e5a62}
+.central-chip:hover{background:#1e4c5b}
+.focus-list button.central-pill{font-family:inherit}
+@media(max-width:720px){.central-form{flex-wrap:wrap}.central-form button{flex:1}}
 /* Node popover */
 .pop{position:absolute;z-index:8;min-width:200px;max-width:260px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-2);padding:10px 12px;transform-origin:top left;animation:pop .18s var(--ease)}
 @keyframes pop{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:none}}
@@ -396,7 +414,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
         <button class="ctl" id="layoutBtn" title="Organizar" aria-label="Organizar"><svg><use href="#i-layout"/></svg></button>
       </div>
       <div class="row">
-        <button class="fab alt" id="focusBtn" title="Destacar variáveis que influenciam um tema">◎ Tema central</button>
+        <button class="fab alt" id="focusBtn" title="Criar e analisar um ou vários temas centrais">◎ Temas centrais</button>
         <button class="fab alt" id="newEdgeBtn"><svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8"><use href="#i-link"/></svg>Ligação</button>
         <button class="fab" id="newNodeBtn"><svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2"><use href="#i-plus"/></svg>Conceito</button>
       </div>
@@ -416,8 +434,14 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
         <h2>◎ Tema central</h2>
         <button class="btn quiet icon" id="focusClose" title="Fechar painel" aria-label="Fechar análise do tema central">×</button>
       </div>
-      <p class="focus-description">Quais variáveis exercem influência sobre o conceito escolhido?</p>
-      <label for="focusSelect">Conceito analisado</label>
+      <p class="focus-description">Crie um ou vários assuntos centrais. A turma conecta forças motrizes, pressões, estados, impactos e respostas a cada um deles.</p>
+      <label for="centralWord">Novo tema central</label>
+      <form id="centralForm" class="central-form"><input type="text" id="centralWord" maxlength="72" minlength="2" placeholder="Ex.: Água, carbono no solo" required><button class="btn primary" id="centralAddBtn" type="submit">+ Incluir</button></form>
+      <div id="centralFormMsg" class="msg" aria-live="polite"></div>
+      <label>Temas centrais da sala</label>
+      <div id="centralTopicsList" class="central-list"></div>
+      <div class="central-layout"><h3>Disposição dos conceitos</h3><button class="btn" id="centralArrangeBtn" type="button">◎ Organizar ao redor dos temas</button><p class="central-panel-notice">A distribuição pode ser ajustada depois arrastando as bolinhas.</p></div>
+      <label for="focusSelect">Analisar influências sobre</label>
       <select id="focusSelect"><option value="">Escolher conceito…</option></select>
       <div class="focus-row">
         <label class="focus-switch" for="focusIndirect"><input type="checkbox" id="focusIndirect"> Ver caminhos indiretos (2 etapas)</label>
@@ -454,6 +478,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
         <div><h1>Estrutura DPSIR</h1><p class="lead">Forças motrizes, pressões, estado, impactos e respostas. As ligações podem cruzar colunas em qualquer direção e formar ciclos.</p></div>
         <button class="btn primary" id="dpsirNewNode"><svg><use href="#i-plus"/></svg>Conceito</button>
       </div>
+      <div id="centralTopicsDpsir" class="central-nodes-dpsir" hidden><h2>◎ Temas centrais</h2><div id="centralTopicsDpsirItems"></div><p class="central-panel-notice">Os temas orientam a oficina; os demais conceitos são classificados em D, P, S, I e R.</p></div>
       <div class="lanes" id="lanes"></div>
       <div class="rels"><h2>Ligações</h2><div class="rel-list" id="paths"></div></div>
     </div></div>
@@ -556,7 +581,8 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
 
     <form class="body" id="nodeForm" hidden>
       <div class="field"><label for="nodeLabel">Palavra ou expressão</label><input type="text" id="nodeLabel" maxlength="72" minlength="2" required placeholder="Ex.: pulso de inundação" autocomplete="off"></div>
-      <div class="field"><label for="nodeCategory">Categoria DPSIR</label><select id="nodeCategory">
+      <label class="focus-switch" for="nodeCentral" style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" id="nodeCentral"> Este conceito é um tema central</label>
+      <div class="field" id="nodeCategoryField"><label for="nodeCategory">Categoria DPSIR</label><select id="nodeCategory">
         <option value="D">D · Força motriz</option><option value="P">P · Pressão</option><option value="S" selected>S · Estado</option><option value="I">I · Impacto</option><option value="R">R · Resposta</option></select></div>
       <div class="msg" id="nodeMsg" aria-live="polite"></div>
       <div class="foot"><button class="btn danger" type="button" id="nodeDeleteBtn" hidden>Excluir</button><button class="btn primary" type="submit" id="nodeSaveBtn">Salvar</button></div>
