@@ -827,7 +827,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   }catch(e){setConn("off","sem conexão");if(!loaded)toast(errorText(e),true)}
   finally{loading=false}
  }
- function applyLock(){const b=!canEdit();["nodeSaveBtn","nodeDeleteBtn","saveEdgeBtn","deleteEdgeBtn","newNodeBtn","newEdgeBtn","dpsirNewNode","popEdit","popLink","popDelete"].forEach(id=>$(id).disabled=b)}
+ function applyLock(){const b=!canEdit();["nodeSaveBtn","nodeDeleteBtn","saveEdgeBtn","deleteEdgeBtn","newNodeBtn","newEdgeBtn","dpsirNewNode","popEdit","popLink","popDelete","centralAddBtn","centralArrangeBtn"].forEach(id=>$(id).disabled=b)}
  function updateAdminState(){
   $("adminLogin").hidden=isFacilitator;
   $("adminControls").hidden=!isFacilitator;
@@ -840,7 +840,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   $("nNodes").textContent=nodes.length;$("nEdges").textContent=edges.length;
   $("nAuthors").textContent=new Set(nodes.map(n=>n.created_by).concat(edges.map(e=>e.updated_by)).filter(Boolean)).size;
   ["source","target"].forEach(id=>{const sel=$(id),cur=sel.value;sel.replaceChildren();const o=document.createElement("option");o.value="";o.textContent="Escolher";sel.appendChild(o);
-   nodes.forEach(n=>{const op=document.createElement("option");op.value=n.id;op.textContent=n.category+" · "+n.label;sel.appendChild(op)});
+   nodes.forEach(n=>{const op=document.createElement("option");op.value=n.id;op.textContent=n.is_central?"◎ "+n.label:n.category+" · "+n.label;sel.appendChild(op)});
    if(nodes.some(n=>n.id===cur))sel.value=cur});
   renderGraph();renderMatrix();renderDpsir();renderResults();updateFocusUI();
   if(selectedNode&&!getNode(selectedNode))hideNodePop();
@@ -854,6 +854,8 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
     {selector:"node",style:{"background-color":ele=>cat[ele.data("category")]?.color||"#4E8FB5","label":"data(label)","color":"#1F3340","font-family":"Inter, system-ui, sans-serif","font-size":12,"font-weight":500,"text-wrap":"wrap","text-max-width":"130px","text-valign":"bottom","text-margin-y":8,"text-background-color":"#F8F9F6","text-background-opacity":.85,"text-background-padding":"2px","text-background-shape":"roundrectangle","width":ele=>Math.min(46,22+ele.connectedEdges().length*3),"height":ele=>Math.min(46,22+ele.connectedEdges().length*3),"border-width":2,"border-color":"#FFFFFF","transition-property":"background-color, border-color, width, height","transition-duration":"150ms"}},
     {selector:"node:selected",style:{"border-width":3,"border-color":COLOR.sel}},
     {selector:"node.linksrc",style:{"border-width":3,"border-color":COLOR.pos}},
+    {selector:"node.central-topic",style:{"background-color":"#102B39","color":"#FFFFFF","border-width":4,"border-color":"#91C7AE","width":104,"height":104,"text-valign":"center","text-halign":"center","text-margin-y":0,"text-max-width":"88px","font-size":12,"font-weight":700,"text-background-opacity":0}},
+    {selector:"node.central-topic:selected",style:{"border-color":"#E6A36C","border-width":5}},
     {selector:".focus-dim",style:{"opacity":.11}},
     {selector:"node.focus-root",style:{"opacity":1,"border-width":5,"border-color":"#102B39","width":50,"height":50,"font-size":14,"font-weight":700}},
     {selector:"node.focus-source",style:{"opacity":1,"border-width":3,"border-color":"#2B8C76"}},
@@ -904,7 +906,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   if(!cy)return;
   const {nodes,edges}=displayData();
   const zoom=cy.zoom(),pan=cy.pan(),had=cy.nodes().length;
-  const list=nodes.map(n=>({group:"nodes",data:{id:n.id,label:n.label,category:n.category},position:{x:Number(n.pos_x)||0,y:Number(n.pos_y)||0}}));
+  const list=nodes.map(n=>({group:"nodes",classes:n.is_central?"central-topic":"",data:{id:n.id,label:n.label,category:n.category,is_central:!!n.is_central},position:{x:Number(n.pos_x)||0,y:Number(n.pos_y)||0}}));
   edges.forEach(e=>{if(getNode(e.source_id)&&getNode(e.target_id))list.push({group:"edges",data:{id:e.id,source:e.source_id,target:e.target_id,weight:Number(e.weight),sign:Number(e.sign)}})});
   const before=new Set(cy.nodes().map(n=>n.id()));
   cy.batch(()=>{cy.elements().remove();cy.add(list)});
@@ -924,7 +926,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   selectedNode=id;
   if(cy){cy.elements().unselect();cy.getElementById(id).select()}
   $("popTitle").textContent=n.label;
-  $("popMeta").innerHTML='<i style="background:'+cat[n.category].color+'"></i>'+cat[n.category].name+(n.created_by?" · "+escapeHtml(n.created_by):"");
+  $("popMeta").innerHTML=n.is_central?"◎ Tema central"+(n.created_by?" · "+escapeHtml(n.created_by):""):'<i style="background:'+cat[n.category].color+'"></i>'+cat[n.category].name+(n.created_by?" · "+escapeHtml(n.created_by):"");
   $("nodePop").hidden=false;positionNodePop();
  }
  function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -951,17 +953,20 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  }
  function revealOnMobile(eles){if(!cy||!isMobile()||!eles||!eles.length)return;const h=$("rede").clientHeight;cy.animate({center:{eles},duration:200,complete:()=>cy.animate({panBy:{x:0,y:-h*0.33},duration:160})})}
  function closePanel(){panelMode="";editingNode="";const p=$("panel");p.classList.remove("open");p.setAttribute("aria-hidden","true");$("stage").classList.remove("panel-open");if(cy)cy.edges().unselect()}
+ function syncNodeCategoryVisibility(){$("nodeCategoryField").hidden=$("nodeCentral").checked}
  function openNewNode(category){
   if(!canEdit())return;
   editingNode="";openPanel("node-new","Novo conceito","Palavra ou expressão e categoria");
-  $("nodeLabel").value="";$("nodeCategory").value=category||"S";$("nodeDeleteBtn").hidden=true;$("nodeSaveBtn").textContent="Adicionar";
+  $("nodeLabel").value="";$("nodeCategory").value=category||"S";$("nodeCentral").checked=false;syncNodeCategoryVisibility();
+  $("nodeDeleteBtn").hidden=true;$("nodeSaveBtn").textContent="Adicionar";
   setTimeout(()=>$("nodeLabel").focus(),120);
  }
  function openEditNode(id){
   if(!canEdit())return toast("Prévia somente para leitura.",true);
   const n=getNode(id);if(!n)return;editingNode=id;hideNodePop();
   openPanel("node-edit","Editar conceito",n.created_by?"Inserido por "+n.created_by:"");
-  $("nodeLabel").value=n.label;$("nodeCategory").value=n.category;$("nodeDeleteBtn").hidden=false;$("nodeSaveBtn").textContent="Salvar";
+  $("nodeLabel").value=n.label;$("nodeCategory").value=n.category;$("nodeCentral").checked=!!n.is_central;syncNodeCategoryVisibility();
+  $("nodeDeleteBtn").hidden=false;$("nodeSaveBtn").textContent="Salvar";
   if(cy&&document.getElementById("rede").classList.contains("active"))revealOnMobile(cy.getElementById(id));
   setTimeout(()=>$("nodeLabel").focus(),120);
  }
@@ -1019,9 +1024,17 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  /* DPSIR */
  function renderDpsir(){
   const {nodes,edges}=displayData();
+  const central=nodes.filter(n=>n.is_central);
+  $("centralTopicsDpsir").hidden=central.length===0;
+  const centralRoot=$("centralTopicsDpsirItems");centralRoot.replaceChildren();
+  central.forEach(n=>{
+    const b=document.createElement("button");b.className="central-chip";b.type="button";b.textContent="◎ "+n.label;
+    b.addEventListener("click",()=>{switchView("rede");setCentralFocus(n.id,true);});
+    centralRoot.appendChild(b)
+  });
   const lanes=$("lanes");lanes.replaceChildren();
   Object.entries(cat).forEach(([k,c])=>{const lane=document.createElement("div");lane.className="lane";
-   const h=document.createElement("h3");h.innerHTML='<i style="background:'+c.color+'"></i>'+k+" · "+c.name;const n=nodes.filter(x=>x.category===k);const cnt=document.createElement("span");cnt.className="n";cnt.textContent=n.length;h.appendChild(cnt);
+   const h=document.createElement("h3");h.innerHTML='<i style="background:'+c.color+'"></i>'+k+" · "+c.name;const n=nodes.filter(x=>!x.is_central&&x.category===k);const cnt=document.createElement("span");cnt.className="n";cnt.textContent=n.length;h.appendChild(cnt);
    const d=document.createElement("div");d.className="d";d.textContent=c.detail;lane.append(h,d);
    n.forEach(x=>{const b=document.createElement("button");b.type="button";b.className="card";b.textContent=x.label;b.title="Editar";b.addEventListener("click",()=>{if(reviewedSnapshot){switchView("rede");selectNode(x.id);return}
       if(!canEdit())return toast("Edições pausadas pelo facilitador.",true);openEditNode(x.id)});lane.appendChild(b)});
@@ -1212,6 +1225,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    const a=focusAnalysis();
    if(!a.target)return;
    cy.elements().addClass("focus-dim");
+   cy.nodes(".central-topic").removeClass("focus-dim");
    const root=cy.getElementById(centralId);
    if(root.length)root.removeClass("focus-dim").addClass("focus-root");
    for(const item of a.direct){
@@ -1240,16 +1254,28 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  }
  function updateFocusUI(){
    const sel=$("focusSelect"),choice=centralId;
+   const centralRoot=$("centralTopicsList");centralRoot.replaceChildren();
+   const centers=displayData().nodes.filter(n=>n.is_central);
+   if(!centers.length){
+     const p=document.createElement("p");p.className="central-panel-notice";
+     p.textContent="Nenhum tema criado. Digite Água, Carbono no solo ou outro assunto acima.";centralRoot.appendChild(p);
+   }
+   centers.forEach(n=>{
+     const b=document.createElement("button");b.type="button";b.className="central-pill"+(n.id===centralId?" selected":"");
+     b.textContent="◎ "+n.label;
+     b.title="Ver variáveis que influenciam "+n.label;
+     b.addEventListener("click",()=>setCentralFocus(n.id,true));centralRoot.appendChild(b);
+   });
    sel.replaceChildren();
-   const first=document.createElement("option");first.value="";first.textContent="Selecione um conceito";sel.appendChild(first);
+   const first=document.createElement("option");first.value="";first.textContent="Todos os temas (sem filtro)";sel.appendChild(first);
    for(const n of displayData().nodes){
-     const opt=document.createElement("option");opt.value=n.id;opt.textContent=n.label;sel.appendChild(opt);
+     const opt=document.createElement("option");opt.value=n.id;opt.textContent=n.is_central?"◎ "+n.label:n.label;sel.appendChild(opt);
    }
    if(displayData().nodes.some(n=>n.id===choice))sel.value=choice;
    else{centralId="";sel.value="";}
    $("focusIndirect").checked=indirectFocus;
    $("focusPanel").hidden=!focusIsOpen;
-   $("focusBtn").classList.toggle("teal",!!centralId);
+   $("focusBtn").classList.toggle("teal",focusIsOpen);
    const {target,direct,indirect}=focusAnalysis();
    const metrics=$("focusMetrics"),dl=$("focusDirectList"),il=$("focusIndirectList");
    metrics.replaceChildren();dl.replaceChildren();il.replaceChildren();
