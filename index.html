@@ -226,6 +226,20 @@ table.matrix td.self{background:#F3F5F4}
 .credits b{color:#fff;font-weight:600}
 .credits a{color:#BFE3D5}
 
+/* Metrics: measurement and evidence fields */
+.metric-form{display:grid;gap:11px}
+.metric-list{display:grid;gap:10px}
+.metric-row{padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.metric-row>div:first-child{min-width:170px;flex:1}
+.metric-row b{display:block;color:var(--navy);font-size:12.5px;font-weight:600}
+.metric-row small{display:block;color:var(--ink-2);font-size:11.5px;margin-top:4px;line-height:1.55}
+.metric-row .metric-actions{display:flex;gap:6px;flex-wrap:wrap}
+.metric-value{font-size:13px;font-variant-numeric:tabular-nums;font-weight:650;color:var(--teal)}
+.metric-form .field select,.metric-form .field input:not([type=range]){width:100%;height:37px;padding:7px 10px;border:1px solid var(--line-2);border-radius:8px;background:#fff}
+.metric-form .inten{display:grid;grid-template-columns:1fr 75px;gap:9px}
+.metric-form .inten input[type=range]{accent-color:var(--teal)}
+.metric-muted-warning{font-size:11px;color:var(--terra)}
+@media(max-width:720px){.nav button{font-size:11px;padding:6px 5px}.metric-row{display:block}.metric-row .metric-actions{margin-top:8px}}
 /* Results: compact scientific dashboards */
 .res-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
 .res-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:14px 0 0}
@@ -367,6 +381,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
     <button role="tab" aria-selected="false" data-view="matriz" id="tab-matriz">Matriz</button>
     <button role="tab" aria-selected="false" data-view="dpsir" id="tab-dpsir">DPSIR</button>
     <button role="tab" aria-selected="false" data-view="resultados" id="tab-resultados">Resultados</button>
+    <button role="tab" aria-selected="false" data-view="metricas" id="tab-metricas">Métricas</button>
     <button role="tab" aria-selected="false" data-view="sobre" id="tab-sobre">Sobre</button>
   </nav>
   <div class="actions">
@@ -512,6 +527,44 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
     </div></div>
   </section>
 
+  <!-- MÉTRICAS CIENTÍFICAS -->
+  <section class="view" id="metricas" role="tabpanel" aria-labelledby="tab-metricas">
+   <div class="page"><div class="page-in">
+    <div class="page-head">
+     <div><h1>Métricas e evidências</h1><p class="lead">Valor observado não é peso da seta. Registre dados, avaliações independentes, concordância e incerteza.</p></div>
+     <button class="btn" id="metricsRefreshBtn">↻ Atualizar avaliações</button>
+    </div>
+    <div class="res-grid">
+     <section class="result-box">
+      <h2>Indicadores das variáveis</h2>
+      <p class="small-note">Valor observado, unidade, fonte e intervalo de referência previamente definido</p>
+      <div id="indicatorList" class="metric-list"></div>
+     </section>
+     <section class="result-box">
+      <h2>Avaliar ligação</h2>
+      <p class="small-note">Uma avaliação independente por navegador e por relação, revisável pelo mesmo aparelho</p>
+      <form id="ratingForm" class="metric-form">
+       <div class="field"><label for="ratingEdge">Relação avaliada</label><select id="ratingEdge" required><option value="">Escolha uma seta</option></select></div>
+       <div class="field"><label for="ratingIntensity">Intensidade (0–100)</label><div class="inten"><input type="range" id="ratingIntensity" min="0" max="100" step="1" value="50"><input type="number" id="ratingNumber" min="0" max="100" step="1" value="50"></div></div>
+       <div class="field"><label for="ratingSign">Sinal da influência</label><select id="ratingSign"><option value="1">+ Aumento da origem eleva destino</option><option value="-1">− Aumento da origem reduz destino</option></select></div>
+       <div class="field"><label for="ratingConfidence">Confiança nesta avaliação</label><select id="ratingConfidence"><option value="1">Baixa · pouco seguro</option><option value="2" selected>Média · alguma evidência</option><option value="3">Alta · bem fundamentada</option></select></div>
+       <div class="field"><label for="ratingEvidence">Origem da evidência</label><select id="ratingEvidence"><option value="percepcao">Percepção / hipótese</option><option value="conhecimento_local">Conhecimento local</option><option value="literatura">Literatura científica</option><option value="dados">Dados medidos</option></select></div>
+       <div class="field"><label for="ratingReference">Fonte / DOI / referência</label><input id="ratingReference" type="text" maxlength="240" placeholder="Ex.: autor, ano, DOI ou base de dados"></div>
+       <div class="field"><label for="ratingContext">Condições de avaliação</label><input id="ratingContext" type="text" maxlength="240" placeholder="Ex.: cheia, seca, Cáceres, 2018–2025"></div>
+       <button class="btn primary" type="submit" id="ratingSubmit" style="width:100%;height:39px">Registrar minha avaliação</button>
+       <p class="muted">Sua avaliação não altera automaticamente o peso da rede. Uma pessoa pode revisar sua nota; não há autenticação individual forte.</p>
+       <div id="ratingStatus" class="msg" aria-live="polite"></div>
+      </form>
+     </section>
+    </div>
+    <section class="result-box" style="margin-top:14px">
+     <div class="page-head"><div><h2>Consenso por ligação</h2><p class="small-note">Mediana entre avaliações com sinal predominante, dispersão (Q1–Q3), concordância e tipo de evidência. O facilitador decide se adota o consenso.</p></div></div>
+     <div id="consensusList" class="metric-list"></div>
+     <p class="muted">Regra de adoção: pelo menos 3 avaliações e concordância de sinal ≥ 66,7%. Discordância exige discussão. A escala é uma elicitação, não uma estimativa de efeito causal. Possíveis confundidores precisam ser analisados com dados e desenho de estudo.</p>
+    </section>
+   </div></div>
+  </section>
+
   <!-- SOBRE -->
   <section class="view" id="sobre" role="tabpanel" aria-labelledby="tab-sobre">
     <div class="page"><div class="page-in about">
@@ -584,6 +637,16 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
       <label class="focus-switch" for="nodeCentral" style="display:flex;align-items:center;gap:8px;font-size:13px"><input type="checkbox" id="nodeCentral"> Este conceito é um tema central</label>
       <div class="field" id="nodeCategoryField"><label for="nodeCategory">Categoria DPSIR</label><select id="nodeCategory">
         <option value="D">D · Força motriz</option><option value="P">P · Pressão</option><option value="S" selected>S · Estado</option><option value="I">I · Impacto</option><option value="R">R · Resposta</option></select></div>
+      <details id="indicatorDetails"><summary style="font-size:12px;color:var(--teal);cursor:pointer;font-weight:600">Indicador quantitativo (opcional)</summary>
+       <div style="display:grid;gap:10px;padding-top:12px">
+        <div class="field"><label for="nodeIndicator">Indicador definido</label><input type="text" id="nodeIndicator" maxlength="120" placeholder="Ex.: estoque SOC na camada 0–30 cm"></div>
+        <div class="row2"><div class="field"><label for="nodeMeasured">Valor observado</label><input type="number" id="nodeMeasured" step="any" placeholder="Valor real"></div><div class="field"><label for="nodeUnit">Unidade</label><input type="text" id="nodeUnit" maxlength="40" placeholder="Mg C/ha"></div></div>
+        <div class="row2"><div class="field"><label for="nodeMin">Referência mínima</label><input type="number" id="nodeMin" step="any" placeholder="Limite inferior"></div><div class="field"><label for="nodeMax">Referência máxima</label><input type="number" id="nodeMax" step="any" placeholder="Limite superior"></div></div>
+        <div class="field"><label for="nodePeriod">Período e recorte espacial</label><input type="text" id="nodePeriod" maxlength="80" placeholder="Ex.: Pantanal MT, 2020–2025"></div>
+        <div class="field"><label for="nodeSource">Fonte, DOI ou link</label><input type="text" id="nodeSource" maxlength="240" placeholder="Registro da origem dos dados"></div>
+        <p class="muted">Os limites servem somente para normalizar o valor observado em 0–1. Eles não criam um peso causal.</p>
+       </div>
+      </details>
       <div class="msg" id="nodeMsg" aria-live="polite"></div>
       <div class="foot"><button class="btn danger" type="button" id="nodeDeleteBtn" hidden>Excluir</button><button class="btn primary" type="submit" id="nodeSaveBtn">Salvar</button></div>
     </form>
@@ -690,6 +753,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  let nodes=[],edges=[],cy=null,channel=null,locked=false,loading=false,loaded=false,renderSignature="",toastTimer=null,hintTimer=null,pendingRefresh=null;
  let selectedNode="",editingNode="",linkFrom="",panelMode="";
  let reviewedSnapshot=null,reviewLabel="",savedSnapshots=[],latestSnapshotFile=null;
+ let metricRatings=[],metricsLastFetch=0;
  let centralId="",liveCentralId="",indirectFocus=false,focusIsOpen=false;
  const focusStorageKey="pantdpsir-central-"+(ROOM_CODE||ROOM||"public");
  const resultCount=10;
@@ -820,6 +884,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    updateAdminState();
    const sig=JSON.stringify([data.nodes,data.edges,locked]);
    if(!loaded||sig!==renderSignature){nodes=data.nodes||[];edges=data.edges||[];renderSignature=sig;updateAll()}
+   if(!reviewedSnapshot && document.getElementById("metricas").classList.contains("active") && Date.now()-metricsLastFetch>12000) loadMetrics();
    loaded=true;
    $("lockChip").hidden=!locked;
    $("lockBtn").textContent=locked?"Liberar edições":"Pausar edições";
@@ -842,7 +907,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   ["source","target"].forEach(id=>{const sel=$(id),cur=sel.value;sel.replaceChildren();const o=document.createElement("option");o.value="";o.textContent="Escolher";sel.appendChild(o);
    nodes.forEach(n=>{const op=document.createElement("option");op.value=n.id;op.textContent=n.is_central?"◎ "+n.label:n.category+" · "+n.label;sel.appendChild(op)});
    if(nodes.some(n=>n.id===cur))sel.value=cur});
-  renderGraph();renderMatrix();renderDpsir();renderResults();updateFocusUI();
+  renderGraph();renderMatrix();renderDpsir();renderResults();updateFocusUI();renderMetrics();
   if(selectedNode&&!getNode(selectedNode))hideNodePop();
   if(selectedNode)positionNodePop();
   if(editingNode&&panelMode==="node-edit"&&!getNode(editingNode))closePanel();
@@ -957,7 +1022,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  function openNewNode(category){
   if(!canEdit())return;
   editingNode="";openPanel("node-new","Novo conceito","Palavra ou expressão e categoria");
-  $("nodeLabel").value="";$("nodeCategory").value=category||"S";$("nodeCentral").checked=false;syncNodeCategoryVisibility();
+  $("nodeLabel").value="";$("nodeCategory").value=category||"S";$("nodeCentral").checked=false;syncNodeCategoryVisibility();setIndicatorFields(null);
   $("nodeDeleteBtn").hidden=true;$("nodeSaveBtn").textContent="Adicionar";
   setTimeout(()=>$("nodeLabel").focus(),120);
  }
@@ -965,7 +1030,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   if(!canEdit())return toast("Prévia somente para leitura.",true);
   const n=getNode(id);if(!n)return;editingNode=id;hideNodePop();
   openPanel("node-edit","Editar conceito",n.created_by?"Inserido por "+n.created_by:"");
-  $("nodeLabel").value=n.label;$("nodeCategory").value=n.category;$("nodeCentral").checked=!!n.is_central;syncNodeCategoryVisibility();
+  $("nodeLabel").value=n.label;$("nodeCategory").value=n.category;$("nodeCentral").checked=!!n.is_central;syncNodeCategoryVisibility();setIndicatorFields(n);
   $("nodeDeleteBtn").hidden=false;$("nodeSaveBtn").textContent="Salvar";
   if(cy&&document.getElementById("rede").classList.contains("active"))revealOnMobile(cy.getElementById(id));
   setTimeout(()=>$("nodeLabel").focus(),120);
@@ -1416,6 +1481,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   hideNodePop();
   if(name==="rede"&&cy)setTimeout(()=>{cy.resize();fitView(false)},50);
    if(name==="resultados"){renderResults();loadSnapshots()}
+   if(name==="metricas"){renderMetrics();loadMetrics()}
  }
  const tabs=[...document.querySelectorAll(".nav [role=tab]")];
  tabs.forEach((btn,i)=>{btn.addEventListener("click",()=>switchView(btn.dataset.view));btn.addEventListener("keydown",e=>{if(e.key==="ArrowRight"||e.key==="ArrowLeft"){e.preventDefault();const j=(i+(e.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length;tabs[j].focus();switchView(tabs[j].dataset.view)}})});
@@ -1445,7 +1511,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   $("nodeSaveBtn").disabled=true;msg("nodeMsg","Salvando…");
   try{
    if(editingNode){
-    await api("update_node",{id:editingNode,label,category,is_central});
+    await api("update_node",{id:editingNode,label,category,is_central,...readIndicatorFields()});
     triggerRefresh();await load();toast(is_central?"Tema central atualizado.":"Conceito atualizado.");closePanel()
    }else{
     const pos=is_central?centralPosition(displayData().nodes.filter(n=>n.is_central).length):{};
