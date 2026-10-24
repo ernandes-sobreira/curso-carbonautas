@@ -1110,7 +1110,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
      throw new Error("JSON inválido ou acima do limite de 250 conceitos e 1500 ligações.");
    const uu=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
    const ids=new Set(value.nodes.map(n=>n.id));
-   if(ids.size!==value.nodes.length||value.nodes.some(n=>!uu.test(n.id)||typeof n.label!=="string"||n.label.trim().length<2||n.label.length>72||!["D","P","S","I","R"].includes(n.category)))throw new Error("IDs, nomes ou categorias DPSIR inválidos no JSON.");
+   if(ids.size!==value.nodes.length||value.nodes.some(n=>!uu.test(n.id)||typeof n.label!=="string"||n.label.trim().length<2||n.label.length>72||!["D","P","S","I","R"].includes(n.category)||(n.is_central!==undefined&&typeof n.is_central!=="boolean")))throw new Error("IDs, nomes ou categorias DPSIR inválidos no JSON.");
    if(value.edges.some(e=>!uu.test(e.id)||!ids.has(e.source_id)||!ids.has(e.target_id)||e.source_id===e.target_id||!Number.isFinite(Number(e.weight))||Number(e.weight)<0||Number(e.weight)>1||![-1,1].includes(Number(e.sign))))throw new Error("Há ligações inválidas no arquivo.");
    return {nodes:value.nodes,edges:value.edges}
  }
@@ -1296,6 +1296,94 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    }
    applyFocusStyles();
  }
+ function centralPosition(index){
+   if(index===0)return{x:0,y:0};
+   const layer=Math.ceil(index/6);
+   const slot=(index-1)%6;
+   const angle=Math.PI*2*slot/6;
+   return{x:Math.round(310*layer*Math.cos(angle)),y:Math.round(310*layer*Math.sin(angle))}
+ }
+ async function createCentralTopic(value){
+   if(!canEdit())return toast("Esta sala está pausada ou você está vendo um arquivo. Restaure para editar.",true);
+   const label=String(value||"").trim().replace(/\s+/g," ");
+   if(label.length<2||label.length>72)return $("centralFormMsg").textContent="Digite um tema de 2 a 72 caracteres.";
+   const existent=displayData().nodes.find(n=>n.label.toLocaleLowerCase("pt-BR")===label.toLocaleLowerCase("pt-BR"));
+   if(existent){
+     if(existent.is_central){setCentralFocus(existent.id,true);return toast("Esse tema central já existe.")}
+     const accepted=await confirmDialog("Tornar tema central","O conceito "+existent.label+" já existe. Quer marcá-lo como tema central, sem criar uma duplicata?","Transformar");
+     if(!accepted)return;
+     try{
+       await api("update_node",{id:existent.id,is_central:true});
+       triggerRefresh();renderSignature="";await load();setCentralFocus(existent.id,true);
+       $("centralWord").value="";$("centralFormMsg").textContent="";
+       toast("Conceito transformado em tema central.");
+     }catch(err){$("centralFormMsg").textContent=errorText(err)}
+     return
+   }
+   const pos=centralPosition(displayData().nodes.filter(n=>n.is_central).length);
+   const button=$("centralAddBtn");button.disabled=true;$("centralFormMsg").textContent="Incluindo na sala…";
+   try{
+     const result=await api("add_node",{label,category:"S",is_central:true,...pos});
+     $("centralWord").value="";$("centralFormMsg").textContent="";
+     if(!reviewedSnapshot){centralId="";liveCentralId="";localStorage.removeItem(focusStorageKey)}
+     triggerRefresh();renderSignature="";await load();
+     focusIsOpen=true;updateFocusUI();
+     if(cy){const item=cy.getElementById(result.id);if(item.length){cy.animate({center:{eles:item},duration:300});}}
+     toast("Tema central "+label+" criado. A turma pode acrescentar relações.");
+   }catch(err){$("centralFormMsg").textContent=errorText(err)}
+   finally{button.disabled=!canEdit()}
+ }
+ async function arrangeAroundCentral(){
+   if(!canEdit())return toast("Você precisa estar na sala ao vivo, com as edições liberadas.",true);
+   if(!cy)return;
+   const data=displayData(),centers=data.nodes.filter(n=>n.is_central);
+   if(!centers.length)return toast("Crie ao menos um tema central.",true);
+   const normal=data.nodes.filter(n=>!n.is_central);
+   const groups=centers.map(()=>[]);
+   const centerIndex=new Map(centers.map((c,i)=>[c.id,i]));
+   normal.forEach((n,i)=>{
+     const related=data.edges.filter(e=>e.source_id===n.id&&centerIndex.has(e.target_id)||
+         e.target_id===n.id&&centerIndex.has(e.source_id))
+        .sort((a,b)=>Number(b.weight)-Number(a.weight));
+     const direct=related[0],focusId=direct?(direct.source_id===n.id?direct.target_id:direct.source_id):null;
+     const idx=focusId?centerIndex.get(focusId):i%centers.length;
+     groups[idx].push(n)
+   });
+   const positions=[];
+   centers.forEach((c,i)=>{
+     const cx=(i-(centers.length-1)/2)*680,cy0=0;
+     positions.push({id:c.id,x:cx,y:cy0});
+     const g=groups[i],counts={D:0,P:0,S:0,I:0,R:0};
+     g.forEach(n=>counts[n.category]=(counts[n.category]||0)+1);
+     const current={D:0,P:0,S:0,I:0,R:0};
+     const sector={D:215,P:287,S:0,I:73,R:145};
+     g.forEach(n=>{
+       const index=current[n.category]++,count=counts[n.category]||1;
+       const spread=(index-(count-1)/2)*Math.min(25,90/Math.max(1,count));
+       const ring=285+Math.floor(index/9)*145;
+       const a=(sector[n.category]+spread)*Math.PI/180;
+       positions.push({id:n.id,x:cx+Math.cos(a)*ring,y:cy0+Math.sin(a)*ring})
+     })
+   });
+   const button=$("centralArrangeBtn");button.disabled=true;
+   try{
+     cy.batch(()=>positions.forEach(p=>{
+       const node=cy.getElementById(p.id);if(node.length)node.position({x:p.x,y:p.y})
+     }));
+     if(cy.elements().length)cy.fit(cy.elements(),75);
+     let errors=0;
+     for(let i=0;i<positions.length;i+=12){
+       const results=await Promise.allSettled(positions.slice(i,i+12).map(p=>api("update_node",p)));
+       errors+=results.filter(r=>r.status==="rejected").length;
+     }
+     triggerRefresh();renderSignature="";await load();
+     toast(errors?"Disposição parcialmente salva: "+errors+" posição(ões) falharam.":"Temas centrais e categorias organizados para a turma.",!!errors)
+   }catch(err){toast(errorText(err),true)}
+   finally{button.disabled=!canEdit()}
+ }
+ $("centralForm").addEventListener("submit",e=>{e.preventDefault();createCentralTopic($("centralWord").value)});
+ $("centralArrangeBtn").addEventListener("click",arrangeAroundCentral);
+
  function setCentralFocus(id,open=true){
    centralId=displayData().nodes.some(n=>n.id===id)?id:"";
    focusIsOpen=open;
@@ -1348,12 +1436,27 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  $("nodeDeleteBtn").addEventListener("click",()=>deleteNode(editingNode));
  document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(linkFrom)endLink();else if(!$("nodePop").hidden)hideNodePop();else if(panelMode)closePanel()}});
 
- $("nodeForm").addEventListener("submit",async e=>{e.preventDefault();if(!canEdit())return toast("Prévia somente para leitura. Restaure para editar.",true);const label=$("nodeLabel").value.trim(),category=$("nodeCategory").value;if(label.length<2)return msg("nodeMsg","Escreva pelo menos duas letras.",true);
+ $("nodeCentral").addEventListener("change",syncNodeCategoryVisibility);
+ $("nodeForm").addEventListener("submit",async e=>{
+  e.preventDefault();if(!canEdit())return toast("Prévia somente para leitura. Restaure para editar.",true);
+  const label=$("nodeLabel").value.trim(),is_central=$("nodeCentral").checked;
+  const category=is_central?"S":$("nodeCategory").value;
+  if(label.length<2)return msg("nodeMsg","Escreva pelo menos duas letras.",true);
   $("nodeSaveBtn").disabled=true;msg("nodeMsg","Salvando…");
   try{
-   if(editingNode){await api("update_node",{id:editingNode,label,category});triggerRefresh();await load();toast("Conceito atualizado.");closePanel()}
-   else{await api("add_node",{label,category});$("nodeLabel").value="";triggerRefresh();await load();msg("nodeMsg","Adicionado. Pode inserir outro.");$("nodeLabel").focus()}
-  }catch(err){msg("nodeMsg",errorText(err),true)}finally{$("nodeSaveBtn").disabled=!canEdit()}});
+   if(editingNode){
+    await api("update_node",{id:editingNode,label,category,is_central});
+    triggerRefresh();await load();toast(is_central?"Tema central atualizado.":"Conceito atualizado.");closePanel()
+   }else{
+    const pos=is_central?centralPosition(displayData().nodes.filter(n=>n.is_central).length):{};
+    await api("add_node",{label,category,is_central,...pos});
+    $("nodeLabel").value="";triggerRefresh();await load();
+    msg("nodeMsg",is_central?"Tema central criado e visível para a turma.":"Conceito adicionado.");
+    $("nodeLabel").focus()
+   }
+  }catch(err){msg("nodeMsg",errorText(err),true)}
+  finally{$("nodeSaveBtn").disabled=!canEdit()}
+ });
  async function deleteNode(id){if(!canEdit())return toast("Prévia somente para leitura.",true);const n=getNode(id);if(!n)return;if(!await confirmDialog("Excluir conceito","Excluir \""+n.label+"\" e todas as ligações dele?"))return;
   try{await api("delete_node",{id});hideNodePop();closePanel();triggerRefresh();await load();toast("Conceito excluído.")}catch(e){toast(errorText(e),true)}}
 
