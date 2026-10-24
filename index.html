@@ -85,6 +85,26 @@ button:disabled{cursor:not-allowed;opacity:.45}
 .hint{top:14px;left:50%;transform:translateX(-50%);padding:7px 12px;border-radius:999px;background:var(--navy);color:#fff;font-size:12px;box-shadow:var(--shadow-2);opacity:0;transition:opacity .2s;pointer-events:none}
 .hint.show{opacity:1}
 
+/* Foco causal: incidências sobre um conceito */
+.focus-panel{position:absolute;right:16px;top:14px;width:min(368px,calc(100% - 32px));max-height:calc(100% - 86px);overflow:auto;z-index:9;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-2);padding:16px;display:flex;flex-direction:column;gap:10px}
+.focus-panel .focus-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.focus-panel h2{margin:0;font-size:16px;font-weight:650;color:var(--navy)}
+.focus-panel .focus-description{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+.focus-panel label{color:var(--ink-2);font-size:12px;font-weight:600}
+.focus-panel select{width:100%;height:38px;border:1px solid var(--line-2);border-radius:var(--radius-s);background:var(--surface);padding:0 10px}
+.focus-panel .focus-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.focus-panel .focus-switch{display:flex;gap:7px;align-items:center;font-size:12px;color:var(--ink-2);font-weight:400}
+.focus-panel .focus-switch input{accent-color:var(--teal)}
+.focus-panel .focus-totals{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--ink-2)}
+.focus-panel .focus-totals strong{color:var(--navy);font-variant-numeric:tabular-nums}
+.focus-panel h3{font-size:12px;margin:6px 0 3px;color:var(--navy);font-weight:700}
+.focus-panel .focus-list{display:grid;gap:5px}
+.focus-panel .focus-item{background:var(--bg);padding:9px 10px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;line-height:1.45}
+.focus-panel .focus-item .focus-name{overflow-wrap:anywhere;flex:1}
+.focus-panel .focus-item .focus-weight{white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums}
+.focus-panel .focus-empty{font-size:12px;color:var(--muted);padding:9px}
+.focus-panel .focus-footnote{font-size:11px;color:var(--muted);line-height:1.4;border-top:1px solid var(--line);padding-top:9px}
+@media(max-width:720px){.focus-panel{right:10px;top:57px;max-height:calc(100% - 166px);width:min(370px,calc(100% - 20px))}.focus-panel .focus-row .btn{font-size:12px}}
 /* Node popover */
 .pop{position:absolute;z-index:8;min-width:200px;max-width:260px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-2);padding:10px 12px;transform-origin:top left;animation:pop .18s var(--ease)}
 @keyframes pop{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:none}}
@@ -376,6 +396,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
         <button class="ctl" id="layoutBtn" title="Organizar" aria-label="Organizar"><svg><use href="#i-layout"/></svg></button>
       </div>
       <div class="row">
+        <button class="fab alt" id="focusBtn" title="Destacar variáveis que influenciam um tema">◎ Tema central</button>
         <button class="fab alt" id="newEdgeBtn"><svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8"><use href="#i-link"/></svg>Ligação</button>
         <button class="fab" id="newNodeBtn"><svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2"><use href="#i-plus"/></svg>Conceito</button>
       </div>
@@ -385,10 +406,33 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
       <div class="m" id="popMeta"></div>
       <div class="b">
         <button class="btn" id="popEdit">Editar</button>
+        <button class="btn" id="popFocus">◎ Focar</button>
         <button class="btn" id="popLink">Ligar a</button>
         <button class="btn danger" id="popDelete">Excluir</button>
       </div>
     </div>
+    <aside id="focusPanel" class="focus-panel" role="region" aria-label="Análise do tema central" hidden>
+      <div class="focus-header">
+        <h2>◎ Tema central</h2>
+        <button class="btn quiet icon" id="focusClose" title="Fechar painel" aria-label="Fechar análise do tema central">×</button>
+      </div>
+      <p class="focus-description">Quais variáveis exercem influência sobre o conceito escolhido?</p>
+      <label for="focusSelect">Conceito analisado</label>
+      <select id="focusSelect"><option value="">Escolher conceito…</option></select>
+      <div class="focus-row">
+        <label class="focus-switch" for="focusIndirect"><input type="checkbox" id="focusIndirect"> Ver caminhos indiretos (2 etapas)</label>
+      </div>
+      <div id="focusMetrics" class="focus-totals" aria-live="polite"></div>
+      <h3>Variáveis que incidem diretamente</h3>
+      <div id="focusDirectList" class="focus-list"></div>
+      <h3 id="focusIndirectHeading" hidden>Caminhos indiretos</h3>
+      <div id="focusIndirectList" class="focus-list" hidden></div>
+      <div class="focus-row">
+        <button class="btn" id="focusReset">Mostrar toda a rede</button>
+        <button class="btn" id="focusExport" title="Baixar as influências do tema em CSV">↓ CSV</button>
+      </div>
+      <p class="focus-footnote">Seta A → tema: influência direta. Caminhos A → B → tema indicam uma hipótese indireta; a força composta é apenas exploratória, não uma medida causal validada.</p>
+    </aside>
   </section>
 
   <!-- MATRIZ -->
@@ -620,6 +664,8 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  let nodes=[],edges=[],cy=null,channel=null,locked=false,loading=false,loaded=false,renderSignature="",toastTimer=null,hintTimer=null,pendingRefresh=null;
  let selectedNode="",editingNode="",linkFrom="",panelMode="";
  let reviewedSnapshot=null,reviewLabel="",savedSnapshots=[],latestSnapshotFile=null;
+ let centralId="",liveCentralId="",indirectFocus=false,focusIsOpen=false;
+ const focusStorageKey="pantdpsir-central-"+(ROOM_CODE||ROOM||"public");
  const resultCount=10;
  const isMobile=()=>window.matchMedia("(max-width:720px)").matches;
 
@@ -717,6 +763,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    ["qrBtn","fullscreenBtn","downloadBtn","adminBtn"].forEach(id=>$(id).disabled=false);
    $("roomCodeChip").hidden=!ROOM_CODE;
    $("roomCodeChip").textContent=ROOM_CODE?"Sala "+ROOM_CODE:"";
+   centralId=localStorage.getItem(focusStorageKey)||"";liveCentralId=centralId;
    initGraph();live();load();setInterval(()=>{if(!document.hidden)load()},7000);
  }
  function confirmDialog(title,text,yes="Excluir"){return new Promise(res=>{const d=$("confirmDialog");$("confirmTitle").textContent=title;$("confirmText").textContent=text;$("confirmYes").textContent=yes;const done=v=>{d.close();$("confirmYes").onclick=null;$("confirmNo").onclick=null;d.oncancel=null;res(v)};$("confirmYes").onclick=()=>done(true);$("confirmNo").onclick=()=>done(false);d.oncancel=e=>{e.preventDefault();done(false)};d.showModal();$("confirmNo").focus()})}
@@ -769,7 +816,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   ["source","target"].forEach(id=>{const sel=$(id),cur=sel.value;sel.replaceChildren();const o=document.createElement("option");o.value="";o.textContent="Escolher";sel.appendChild(o);
    nodes.forEach(n=>{const op=document.createElement("option");op.value=n.id;op.textContent=n.category+" · "+n.label;sel.appendChild(op)});
    if(nodes.some(n=>n.id===cur))sel.value=cur});
-  renderGraph();renderMatrix();renderDpsir();renderResults();
+  renderGraph();renderMatrix();renderDpsir();renderResults();updateFocusUI();
   if(selectedNode&&!getNode(selectedNode))hideNodePop();
   if(selectedNode)positionNodePop();
   if(editingNode&&panelMode==="node-edit"&&!getNode(editingNode))closePanel();
@@ -781,6 +828,12 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
     {selector:"node",style:{"background-color":ele=>cat[ele.data("category")]?.color||"#4E8FB5","label":"data(label)","color":"#1F3340","font-family":"Inter, system-ui, sans-serif","font-size":12,"font-weight":500,"text-wrap":"wrap","text-max-width":"130px","text-valign":"bottom","text-margin-y":8,"text-background-color":"#F8F9F6","text-background-opacity":.85,"text-background-padding":"2px","text-background-shape":"roundrectangle","width":ele=>Math.min(46,22+ele.connectedEdges().length*3),"height":ele=>Math.min(46,22+ele.connectedEdges().length*3),"border-width":2,"border-color":"#FFFFFF","transition-property":"background-color, border-color, width, height","transition-duration":"150ms"}},
     {selector:"node:selected",style:{"border-width":3,"border-color":COLOR.sel}},
     {selector:"node.linksrc",style:{"border-width":3,"border-color":COLOR.pos}},
+    {selector:".focus-dim",style:{"opacity":.11}},
+    {selector:"node.focus-root",style:{"opacity":1,"border-width":5,"border-color":"#102B39","width":50,"height":50,"font-size":14,"font-weight":700}},
+    {selector:"node.focus-source",style:{"opacity":1,"border-width":3,"border-color":"#2B8C76"}},
+    {selector:"node.focus-mid",style:{"opacity":1,"border-width":3,"border-color":"#C9955A"}},
+    {selector:"edge.focus-direct",style:{"opacity":1,"z-index":11}},
+    {selector:"edge.focus-indirect",style:{"opacity":.82,"z-index":9}},
     {selector:"edge",style:{"curve-style":"bezier","target-arrow-shape":"triangle","arrow-scale":.95,"line-color":ele=>edgeColor(ele),"target-arrow-color":ele=>edgeColor(ele),"width":ele=>Math.max(1.4,Number(ele.data("weight"))*6),"opacity":.9,"label":ele=>signedLabel(ele.data("sign"),ele.data("weight")),"font-family":"Inter, system-ui, sans-serif","font-size":10,"font-weight":600,"color":"#4A6170","text-background-opacity":.92,"text-background-color":"#FFFFFF","text-background-padding":"2px","text-background-shape":"roundrectangle","text-rotation":"autorotate","line-style":ele=>Number(ele.data("weight"))===0?"dashed":"solid","line-dash-pattern":[5,4]}},
     {selector:"edge:selected",style:{"line-color":COLOR.sel,"target-arrow-color":COLOR.sel,"width":ele=>Math.max(2.5,Number(ele.data("weight"))*6+1),"overlay-color":"#8FB8A6","overlay-opacity":.18,"overlay-padding":6}}
    ]});
@@ -838,6 +891,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    if(fresh.length&&fresh.some(n=>{const p=n.position();return p.x<ext.x1||p.x>ext.x2||p.y<ext.y1||p.y>ext.y2}))fitView()}
   if(selectedNode&&cy.getElementById(selectedNode).length)cy.getElementById(selectedNode).select();
   if(linkFrom&&cy.getElementById(linkFrom).length)cy.getElementById(linkFrom).addClass("linksrc");
+  applyFocusStyles();
  }
  function selectNode(id){
   const n=getNode(id);if(!n)return;
@@ -863,6 +917,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
 
  /* contextual panel */
  function openPanel(mode,title,kicker){
+  $("focusPanel").hidden=true;
   panelMode=mode;$("panelTitle").textContent=title;$("panelKicker").textContent=kicker||"";
   $("nodeForm").hidden=!mode.startsWith("node");$("edgeForm").hidden=mode!=="edge";
   const p=$("panel");p.classList.add("open");p.setAttribute("aria-hidden","false");$("stage").classList.add("panel-open");
@@ -1023,7 +1078,9 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  function showReview(payload,title){
    const parsed=validSnapshotFile(payload);
    closePanel();hideNodePop();endLink();
+   liveCentralId=centralId;
    reviewedSnapshot=parsed;reviewLabel=title;
+   centralId=parsed.nodes.some(n=>n.id===payload.focus?.node_id)?payload.focus.node_id:(parsed.nodes.some(n=>n.id===liveCentralId)?liveCentralId:"");
    $("previewBanner").hidden=false;
    $("previewCount").textContent=parsed.nodes.length+" conceitos · "+parsed.edges.length+" ligações · Prévia da rede, matriz, DPSIR e gráficos. A sala atual permanece intacta.";
    updateAll();applyLock();
@@ -1062,6 +1119,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  });
  $("returnLiveBtn").addEventListener("click",()=>{
    reviewedSnapshot=null;reviewLabel="";latestSnapshotFile=null;
+   centralId=liveCentralId;
    $("previewBanner").hidden=true;closePanel();hideNodePop();
    updateAll();applyLock();switchView("rede");
    toast("Rede, matriz e resultados voltaram aos dados da sala ao vivo.");
@@ -1081,11 +1139,133 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    try{
      await api("import_snapshot",{payload:reviewedSnapshot});
      reviewedSnapshot=null;reviewLabel="";latestSnapshotFile=null;
+     localStorage.setItem(focusStorageKey,centralId);
      $("previewBanner").hidden=true;
      renderSignature="";triggerRefresh();await load();updateAll();applyLock();await loadSnapshots();
      toast("Projeto restaurado na sala coletiva.");switchView("rede");
    }catch(err){toast(errorText(err),true)}finally{button.disabled=false}
  });
+ /* theme-centered causal influence analysis */
+ function focusAnalysis(){
+   const d=displayData(),allNodes=new Map(d.nodes.map(n=>[n.id,n]));
+   const target=allNodes.get(centralId);
+   if(!target)return {target:null,direct:[],indirect:[]};
+   const direct=d.edges.filter(e=>e.target_id===centralId&&allNodes.has(e.source_id))
+     .map(e=>({node:allNodes.get(e.source_id),edge:e,intensity:Math.round(Number(e.weight)*100),signed:Math.round(Number(e.weight)*Number(e.sign)*100)}))
+     .sort((a,b)=>b.intensity-a.intensity||a.node.label.localeCompare(b.node.label));
+   const indirect=[];
+   if(indirectFocus){
+     const linksTo=new Map();
+     for(const e of d.edges){
+       if(!linksTo.has(e.target_id))linksTo.set(e.target_id,[]);
+       linksTo.get(e.target_id).push(e);
+     }
+     for(const incoming of direct){
+       const middle=incoming.node;
+       if(!middle||middle.id===centralId)continue;
+       for(const upstream of linksTo.get(middle.id)||[]){
+         const source=allNodes.get(upstream.source_id);
+         if(!source||source.id===centralId||source.id===middle.id)continue;
+         const product=Number(upstream.weight)*Number(incoming.edge.weight)*Number(upstream.sign)*Number(incoming.edge.sign);
+         indirect.push({
+           node:source,via:middle,first:upstream,second:incoming.edge,
+           signed:Math.round(product*100),intensity:Math.round(Math.abs(product)*100)
+         });
+       }
+     }
+     indirect.sort((a,b)=>b.intensity-a.intensity||a.node.label.localeCompare(b.node.label));
+   }
+   return {target,direct,indirect}
+ }
+ function applyFocusStyles(){
+   if(!cy)return;
+   cy.elements().removeClass("focus-dim focus-root focus-source focus-mid focus-direct focus-indirect");
+   const a=focusAnalysis();
+   if(!a.target)return;
+   cy.elements().addClass("focus-dim");
+   const root=cy.getElementById(centralId);
+   if(root.length)root.removeClass("focus-dim").addClass("focus-root");
+   for(const item of a.direct){
+     const n=cy.getElementById(item.node.id);
+     if(n.length)n.removeClass("focus-dim").addClass("focus-source");
+     const e=cy.getElementById(item.edge.id);
+     if(e.length)e.removeClass("focus-dim").addClass("focus-direct");
+   }
+   if(indirectFocus){
+     for(const item of a.indirect){
+       const n=cy.getElementById(item.node.id);
+       if(n.length)n.removeClass("focus-dim").addClass("focus-mid");
+       const e=cy.getElementById(item.first.id);
+       if(e.length)e.removeClass("focus-dim").addClass("focus-indirect");
+     }
+   }
+ }
+ function focusRow(item,indirect=false){
+   const row=document.createElement("div");row.className="focus-item";
+   const name=document.createElement("span");name.className="focus-name";
+   name.textContent=indirect?item.node.label+" → "+item.via.label+" → "+focusAnalysis().target.label:item.node.label+" → "+focusAnalysis().target.label;
+   const value=document.createElement("strong");value.className="focus-weight";
+   value.textContent=(item.signed>0?"+":item.signed<0?"−":"")+Math.abs(item.signed);
+   value.style.color=item.signed>0?"var(--teal)":item.signed<0?"var(--terra)":"var(--muted)";
+   row.append(name,value);return row
+ }
+ function updateFocusUI(){
+   const sel=$("focusSelect"),choice=centralId;
+   sel.replaceChildren();
+   const first=document.createElement("option");first.value="";first.textContent="Selecione um conceito";sel.appendChild(first);
+   for(const n of displayData().nodes){
+     const opt=document.createElement("option");opt.value=n.id;opt.textContent=n.label;sel.appendChild(opt);
+   }
+   if(displayData().nodes.some(n=>n.id===choice))sel.value=choice;
+   else{centralId="";sel.value="";}
+   $("focusIndirect").checked=indirectFocus;
+   $("focusPanel").hidden=!focusIsOpen;
+   $("focusBtn").classList.toggle("teal",!!centralId);
+   const {target,direct,indirect}=focusAnalysis();
+   const metrics=$("focusMetrics"),dl=$("focusDirectList"),il=$("focusIndirectList");
+   metrics.replaceChildren();dl.replaceChildren();il.replaceChildren();
+   $("focusIndirectHeading").hidden=!indirectFocus;
+   il.hidden=!indirectFocus;
+   if(!target){
+     const div=document.createElement("div");div.className="focus-empty";div.textContent="Escolha uma bolinha ou selecione um conceito para conhecer suas influências.";
+     dl.appendChild(div);applyFocusStyles();return;
+   }
+   const number=document.createElement("span");number.innerHTML="<strong>"+direct.length+"</strong> entradas diretas";
+   metrics.appendChild(number);
+   if(indirectFocus){const number2=document.createElement("span");number2.innerHTML="<strong>"+indirect.length+"</strong> caminhos em duas etapas";metrics.appendChild(number2)}
+   if(!direct.length){const p=document.createElement("div");p.className="focus-empty";p.textContent="Nenhuma ligação chegando diretamente a esse conceito.";dl.appendChild(p)}
+   direct.slice(0,30).forEach(item=>dl.appendChild(focusRow(item)));
+   if(indirectFocus){
+     if(!indirect.length){const p=document.createElement("div");p.className="focus-empty";p.textContent="Nenhum caminho de duas etapas chega até o tema.";il.appendChild(p)}
+     indirect.slice(0,20).forEach(item=>il.appendChild(focusRow(item,true)))
+   }
+   applyFocusStyles();
+ }
+ function setCentralFocus(id,open=true){
+   centralId=displayData().nodes.some(n=>n.id===id)?id:"";
+   focusIsOpen=open;
+   if(!reviewedSnapshot){
+     liveCentralId=centralId;
+     if(centralId)localStorage.setItem(focusStorageKey,centralId);
+     else localStorage.removeItem(focusStorageKey);
+   }
+   updateFocusUI();
+ }
+ $("focusBtn").addEventListener("click",()=>{
+   closePanel();hideNodePop();focusIsOpen=!focusIsOpen;updateFocusUI();
+ });
+ $("focusClose").addEventListener("click",()=>{focusIsOpen=false;updateFocusUI()});
+ $("focusSelect").addEventListener("change",()=>setCentralFocus($("focusSelect").value,true));
+ $("focusIndirect").addEventListener("change",()=>{indirectFocus=$("focusIndirect").checked;updateFocusUI()});
+ $("focusReset").addEventListener("click",()=>{setCentralFocus("",false);toast("Rede completa visível.")});
+ $("focusExport").addEventListener("click",()=>{
+   const a=focusAnalysis();if(!a.target)return toast("Escolha um tema central antes de exportar.",true);
+   const header=["Tipo","Variável de origem","Intermediária","Tema central","Intensidade 0-100","Peso assinado","Categoria de origem"];
+   const rows=[header,...a.direct.map(x=>["Direta",x.node.label,"",a.target.label,x.intensity,x.signed,x.node.category]),
+     ...a.indirect.map(x=>["Indireta (2 etapas)",x.node.label,x.via.label,a.target.label,x.intensity,x.signed,x.node.category])];
+   download("pantanal-incidencias-"+a.target.label.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").slice(0,36)+".csv",csv(rows),"text/csv;charset=utf-8");
+ });
+
  /* navigation */
  function switchView(name){
   document.querySelectorAll(".nav [role=tab]").forEach(t=>{const on=t.dataset.view===name;t.setAttribute("aria-selected",on?"true":"false");t.tabIndex=on?0:-1});
@@ -1107,6 +1287,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  });
  $("panelClose").addEventListener("click",closePanel);
  $("popEdit").addEventListener("click",()=>openEditNode(selectedNode));
+ $("popFocus").addEventListener("click",()=>{const id=selectedNode;hideNodePop();setCentralFocus(id,true)});
  $("popLink").addEventListener("click",()=>{if(nodes.length<2)return toast("Adicione outro conceito para ligar.",true);startLink(selectedNode)});
  $("popDelete").addEventListener("click",()=>deleteNode(selectedNode));
  $("nodeDeleteBtn").addEventListener("click",()=>deleteNode(editingNode));
@@ -1214,6 +1395,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
     method:"Mapa cognitivo causal fuzzy não calibrado",
     weights:{ui:"intensidade 0 a 100",signed:"-100 a 100",fcm:"sinal × intensidade / 100"},
     nodes,edges,
+    focus:centralId&&getNode(centralId)?{node_id:centralId,label:getNode(centralId).label,mode:"incoming"}:null,
     matrix:{
       row_ids:nodes.map(n=>n.id),
       column_ids:nodes.map(n=>n.id),
