@@ -1166,10 +1166,13 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
        for(const upstream of linksTo.get(middle.id)||[]){
          const source=allNodes.get(upstream.source_id);
          if(!source||source.id===centralId||source.id===middle.id)continue;
-         const product=Number(upstream.weight)*Number(incoming.edge.weight)*Number(upstream.sign)*Number(incoming.edge.sign);
+         const firstStrength=Math.round(Number(upstream.weight)*100);
+         const secondStrength=Math.round(Number(incoming.edge.weight)*100);
+         const magnitude=Math.round(firstStrength*secondStrength/100);
+         const sign=Number(upstream.sign)*Number(incoming.edge.sign);
          indirect.push({
            node:source,via:middle,first:upstream,second:incoming.edge,
-           signed:Math.round(product*100),intensity:Math.round(Math.abs(product)*100)
+           signed:sign*magnitude,intensity:magnitude
          });
        }
      }
@@ -1194,7 +1197,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    if(indirectFocus){
      for(const item of a.indirect){
        const n=cy.getElementById(item.node.id);
-       if(n.length)n.removeClass("focus-dim").addClass("focus-mid");
+       if(n.length){n.removeClass("focus-dim");if(!n.hasClass("focus-source"))n.addClass("focus-mid");}
        const e=cy.getElementById(item.first.id);
        if(e.length)e.removeClass("focus-dim").addClass("focus-indirect");
      }
@@ -1263,7 +1266,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    const header=["Tipo","Variável de origem","Intermediária","Tema central","Intensidade 0-100","Peso assinado","Categoria de origem"];
    const rows=[header,...a.direct.map(x=>["Direta",x.node.label,"",a.target.label,x.intensity,x.signed,x.node.category]),
      ...a.indirect.map(x=>["Indireta (2 etapas)",x.node.label,x.via.label,a.target.label,x.intensity,x.signed,x.node.category])];
-   download("pantanal-incidencias-"+a.target.label.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").slice(0,36)+".csv",csv(rows),"text/csv;charset=utf-8");
+   download("pantanal-incidencias-"+a.target.label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").slice(0,36)+".csv",csv(rows),"text/csv;charset=utf-8");
  });
 
  /* navigation */
