@@ -506,7 +506,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
         <section class="result-box"><h2>Menores forças</h2><p class="small-note">Ligações de menor intensidade absoluta</p><div id="weakLinks"></div></section>
       </div>
       <div class="res-grid">
-        <section class="result-box"><h2>Conceitos centrais</h2><p class="small-note">Soma das intensidades das ligações incidentes</p><div id="centralNodes"></div></section>
+        <section class="result-box"><h2>Mais conectados</h2><p class="small-note">Soma das intensidades das ligações incidentes</p><div id="centralNodes"></div></section>
         <section class="result-box"><h2>Versões arquivadas</h2><p class="small-note">Abra uma versão salva sem modificar a rede ao vivo</p><div id="savedSnapshots"><p class="muted">Buscando versões…</p></div></section>
       </div>
     </div></div>
@@ -998,10 +998,10 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
   const wrap=document.createElement("div");wrap.className="mwrap";
   const table=document.createElement("table");table.className="matrix";
   const thead=document.createElement("thead"),hr=document.createElement("tr"),corner=document.createElement("th");corner.className="corner";corner.textContent="origem ↓  destino →";hr.appendChild(corner);
-  nodes.forEach(n=>{const th=document.createElement("th");th.className="col";th.scope="col";th.title=n.label+" · "+cat[n.category].name;const sp=document.createElement("span");sp.textContent=n.label;th.appendChild(sp);hr.appendChild(th)});
+  nodes.forEach(n=>{const th=document.createElement("th");th.className="col";th.scope="col";th.title=n.label+" · "+(n.is_central?"Tema central":cat[n.category].name);const sp=document.createElement("span");sp.textContent=(n.is_central?"◎ ":"")+n.label;th.appendChild(sp);hr.appendChild(th)});
   thead.appendChild(hr);table.appendChild(thead);
   const tbody=document.createElement("tbody");
-  nodes.forEach(a=>{const tr=document.createElement("tr"),th=document.createElement("th");th.className="rh";th.scope="row";th.textContent=a.label;th.title=a.label+" · "+cat[a.category].name;tr.appendChild(th);
+  nodes.forEach(a=>{const tr=document.createElement("tr"),th=document.createElement("th");th.className="rh";th.scope="row";th.textContent=a.label;th.title=a.label+" · "+(a.is_central?"Tema central":cat[a.category].name);tr.appendChild(th);
    nodes.forEach(b=>{const td=document.createElement("td");
     if(a.id===b.id){td.className="self";td.textContent="";tr.appendChild(td);return}
     const e=getEdge(a.id,b.id),btn=document.createElement("button");btn.type="button";
@@ -1574,7 +1574,7 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
  }
  function exportKind(kind){
   const {nodes,edges}=displayData();
-  if(kind==="nodes")download("pantanal-conceitos.csv",csv([["ID","Conceito","Categoria","Autor","Última edição por"],...nodes.map(n=>[n.id,n.label,n.category,n.created_by,n.updated_by])]),"text/csv;charset=utf-8");
+  if(kind==="nodes")download("pantanal-conceitos.csv",csv([["ID","Conceito","Papel","Categoria DPSIR","Autor","Última edição por"],...nodes.map(n=>[n.id,n.label,n.is_central?"Tema central":"Variável DPSIR",n.is_central?"—":n.category,n.created_by,n.updated_by])]),"text/csv;charset=utf-8");
   if(kind==="edges")download("pantanal-ligacoes.csv",csv([["Origem","Origem DPSIR","Destino","Destino DPSIR","Sinal","Intensidade de 0 a 100","Peso assinado de -100 a +100","Peso fuzzy de -1 a +1","Justificativa","Editado por"],...edges.map(e=>[getNode(e.source_id)?.label,getNode(e.source_id)?.category,getNode(e.target_id)?.label,getNode(e.target_id)?.category,e.sign,Math.round(Number(e.weight)*100),signedValue(e),(Number(e.sign)*Number(e.weight)).toFixed(2),e.note,e.updated_by])]),"text/csv;charset=utf-8");
   if(kind==="matrix")download("pantanal-matriz-assinada.csv",csv([["Origem \\ Destino (escala assinada -100 a +100)",...nodes.map(n=>n.label)],...nodes.map(a=>[a.label,...nodes.map(b=>{const e=getEdge(a.id,b.id);return e?String(signedValue(e)):""})])]),"text/csv;charset=utf-8");
   if(kind==="json")download("pantanal-dpsir-projeto.json",JSON.stringify(buildCompleteJson(),null,2),"application/json");
