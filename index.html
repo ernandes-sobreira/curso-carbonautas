@@ -1203,10 +1203,10 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
      }
    }
  }
- function focusRow(item,indirect=false){
+ function focusRow(item,targetLabel,indirect=false){
    const row=document.createElement("div");row.className="focus-item";
    const name=document.createElement("span");name.className="focus-name";
-   name.textContent=indirect?item.node.label+" → "+item.via.label+" → "+focusAnalysis().target.label:item.node.label+" → "+focusAnalysis().target.label;
+   name.textContent=indirect?item.node.label+" → "+item.via.label+" → "+targetLabel:item.node.label+" → "+targetLabel;
    const value=document.createElement("strong");value.className="focus-weight";
    value.textContent=(item.signed>0?"+":item.signed<0?"−":"")+Math.abs(item.signed);
    value.style.color=item.signed>0?"var(--teal)":item.signed<0?"var(--terra)":"var(--muted)";
@@ -1237,10 +1237,10 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    metrics.appendChild(number);
    if(indirectFocus){const number2=document.createElement("span");number2.innerHTML="<strong>"+indirect.length+"</strong> caminhos em duas etapas";metrics.appendChild(number2)}
    if(!direct.length){const p=document.createElement("div");p.className="focus-empty";p.textContent="Nenhuma ligação chegando diretamente a esse conceito.";dl.appendChild(p)}
-   direct.slice(0,30).forEach(item=>dl.appendChild(focusRow(item)));
+   direct.slice(0,30).forEach(item=>dl.appendChild(focusRow(item,target.label)));
    if(indirectFocus){
      if(!indirect.length){const p=document.createElement("div");p.className="focus-empty";p.textContent="Nenhum caminho de duas etapas chega até o tema.";il.appendChild(p)}
-     indirect.slice(0,20).forEach(item=>il.appendChild(focusRow(item,true)))
+     indirect.slice(0,20).forEach(item=>il.appendChild(focusRow(item,target.label,true)))
    }
    applyFocusStyles();
  }
