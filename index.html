@@ -1655,7 +1655,7 @@ $("ratingForm").addEventListener("submit",async event=>{
     triggerRefresh();await load();toast(is_central?"Tema central atualizado.":"Conceito atualizado.");closePanel()
    }else{
     const pos=is_central?centralPosition(displayData().nodes.filter(n=>n.is_central).length):{};
-    await api("add_node",{label,category,is_central,...pos});
+    await api("add_node",{label,category,is_central,...pos,...readIndicatorFields()});
     $("nodeLabel").value="";triggerRefresh();await load();
     msg("nodeMsg",is_central?"Tema central criado e visível para a turma.":"Conceito adicionado.");
     $("nodeLabel").focus()
