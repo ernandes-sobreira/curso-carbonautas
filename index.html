@@ -1177,7 +1177,15 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    const ids=new Set(value.nodes.map(n=>n.id));
    if(ids.size!==value.nodes.length||value.nodes.some(n=>!uu.test(n.id)||typeof n.label!=="string"||n.label.trim().length<2||n.label.length>72||!["D","P","S","I","R"].includes(n.category)||(n.is_central!==undefined&&typeof n.is_central!=="boolean")))throw new Error("IDs, nomes ou categorias DPSIR inválidos no JSON.");
    if(value.edges.some(e=>!uu.test(e.id)||!ids.has(e.source_id)||!ids.has(e.target_id)||e.source_id===e.target_id||!Number.isFinite(Number(e.weight))||Number(e.weight)<0||Number(e.weight)>1||![-1,1].includes(Number(e.sign))))throw new Error("Há ligações inválidas no arquivo.");
-   return {nodes:value.nodes,edges:value.edges}
+   const ratings=Array.isArray(value.ratings)?value.ratings:[];
+   if(ratings.length>5000)throw new Error("Avaliações acima do limite de 5000.");
+   const edgesIds=new Set(value.edges.map(e=>e.id));
+   if(ratings.some(r=>!edgesIds.has(r.edge_id)||typeof r.voter_hash!=="string"||!/^[a-f0-9]{64}$/i.test(r.voter_hash)||
+      !Number.isInteger(Number(r.intensity))||Number(r.intensity)<0||Number(r.intensity)>100||
+      ![-1,1].includes(Number(r.sign))||![1,2,3].includes(Number(r.confidence))||
+      !["percepcao","conhecimento_local","literatura","dados"].includes(r.evidence_type)))
+      throw new Error("Avaliações no JSON estão inválidas.");
+   return {nodes:value.nodes,edges:value.edges,ratings}
  }
  function showReview(payload,title){
    const parsed=validSnapshotFile(payload);
@@ -1752,13 +1760,19 @@ $("ratingForm").addEventListener("submit",async event=>{
   });
   const ranked=[...edges].sort((a,b)=>intensity(b)-intensity(a));
   const average=edges.length?Math.round(edges.reduce((n,e)=>n+intensity(e),0)/edges.length):0;
+  const votes=activeVotes();
+  const summaries=edges.map(e=>({edge_id:e.id,summary:consensusFor(e.id,votes)})).filter(r=>r.summary);
+  const exportable=votes.length&&votes.every(r=>typeof r.voter_hash==="string"&&/^[a-f0-9]{64}$/i.test(r.voter_hash));
   return {
-    schema:"pantanal-vivo/dpsir/2",
+    schema:"pantanal-vivo/dpsir/3",
     title:reviewedSnapshot?(reviewLabel||"Pantanal Vivo / DPSIR"):"Pantanal Vivo / DPSIR",
     exported_at:new Date().toISOString(),
     method:"Mapa cognitivo causal fuzzy não calibrado",
     weights:{ui:"intensidade 0 a 100",signed:"-100 a 100",fcm:"sinal × intensidade / 100"},
     nodes,edges,
+    ...(exportable?{ratings:votes}:{}),
+    metrics_summary:summaries,
+    ratings_note:exportable?"As avaliações anônimas foram exportadas e podem ser restauradas.":"Resumos exportados. Para restaurar todas as avaliações individuais, faça a exportação no modo facilitador.",
     focus:centralId&&getNode(centralId)?{node_id:centralId,label:getNode(centralId).label,mode:"incoming"}:null,
     matrix:{
       row_ids:nodes.map(n=>n.id),
@@ -1778,12 +1792,20 @@ $("ratingForm").addEventListener("submit",async event=>{
     }
   };
  }
- function exportKind(kind){
+ async function exportKind(kind){
   const {nodes,edges}=displayData();
   if(kind==="nodes")download("pantanal-conceitos.csv",csv([["ID","Conceito","Papel","Categoria DPSIR","Autor","Última edição por"],...nodes.map(n=>[n.id,n.label,n.is_central?"Tema central":"Variável DPSIR",n.is_central?"—":n.category,n.created_by,n.updated_by])]),"text/csv;charset=utf-8");
   if(kind==="edges")download("pantanal-ligacoes.csv",csv([["Origem","Origem DPSIR","Destino","Destino DPSIR","Sinal","Intensidade de 0 a 100","Peso assinado de -100 a +100","Peso fuzzy de -1 a +1","Justificativa","Editado por"],...edges.map(e=>[getNode(e.source_id)?.label,getNode(e.source_id)?.category,getNode(e.target_id)?.label,getNode(e.target_id)?.category,e.sign,Math.round(Number(e.weight)*100),signedValue(e),(Number(e.sign)*Number(e.weight)).toFixed(2),e.note,e.updated_by])]),"text/csv;charset=utf-8");
   if(kind==="matrix")download("pantanal-matriz-assinada.csv",csv([["Origem \\ Destino (escala assinada -100 a +100)",...nodes.map(n=>n.label)],...nodes.map(a=>[a.label,...nodes.map(b=>{const e=getEdge(a.id,b.id);return e?String(signedValue(e)):""})])]),"text/csv;charset=utf-8");
-  if(kind==="json")download("pantanal-dpsir-projeto.json",JSON.stringify(buildCompleteJson(),null,2),"application/json");
+  if(kind==="json"){
+    if(!reviewedSnapshot){
+      try{
+        const data=await api("get_metrics");
+        metricRatings=data.ratings||[];metricsLastFetch=Date.now();
+      }catch(err){toast("Não foi possível consultar avaliações: "+errorText(err),true);return}
+    }
+    download("pantanal-dpsir-projeto.json",JSON.stringify(buildCompleteJson(),null,2),"application/json");
+  }
   if(kind==="png"){if(!cy||!nodes.length)return toast("Adicione conceitos à rede primeiro.",true);const a=document.createElement("a");a.href=cy.png({output:"base64uri",bg:"#ffffff",scale:2,full:true});a.download="pantanal-rede.png";a.click()}
   toast("Exportação preparada.");
  }
