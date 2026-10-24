@@ -33,6 +33,20 @@ O endereço principal abre uma página de salas. A pessoa com a chave do **facil
 - **Versões arquivadas:** facilitador guarda versões no servidor; os participantes podem visualizá-las na aba Resultados. Ao restaurar um arquivo, um backup da rede anterior é criado automaticamente.
 - **Sobre:** explicações metodológicas e limites científicos.
 
+## Vários temas centrais na mesma sala
+
+A plataforma permite **criar temas centrais como conceitos estruturantes** desde o início da atividade, mesmo que a rede esteja vazia. Abra a aba **Rede**, clique em **◎ Temas centrais**, digite o primeiro assunto — por exemplo, **Água** — e selecione **+ Incluir**. Faça o mesmo para **Carbono no solo** e **Carbono na biomassa aérea**: **todos aparecem ao mesmo tempo como bolinhas maiores azul-marinho**, vinculadas à sala e persistidas no banco de dados.
+
+- Os temas centrais não precisam de classificação D/P/S/I/R; essa classificação pertence às **outras variáveis** que a turma vai inserindo. No banco, o conceito recebe a propriedade booleana `is_central`, independente da categoria técnica armazenada, e o painel DPSIR apresenta os temas numa seção própria.
+- Os alunos continuam usando **+ Conceito** para adicionar forças motrizes, pressões, estado, impactos e respostas. Depois conectam essas variáveis aos temas centrais por setas direcionadas com sinal e força de 0–100.
+- Em **◎ Temas centrais**, o botão **Organizar ao redor dos temas** dispõe os tópicos centrais em posição de destaque e as demais variáveis ao redor, agrupadas por categoria e por maior força de conexão com cada tema. Essa é uma **organização visual**, não uma inferência de causalidade.
+- É possível arrastar livremente as bolinhas depois da organização. As posições são salvas na sala. **Não há limite de um único tema central.**
+- Uma palavra já cadastrada pode virar tema central: clique na bolinha → **Editar** → **Este conceito é um tema central**. Para removê-la da função central, desmarque a opção.
+- O painel permite **analisar separadamente cada tema**, mostrando as ligações que incidem sobre ele e, se solicitado, caminhos indiretos com duas etapas. Selecionar um centro para investigar não apaga nem substitui os demais centros.
+- O JSON exportado e as versões salvas no servidor preservam `is_central` para cada conceito. JSONs antigos sem esse campo importam normalmente com todos os conceitos comuns.
+
+**Exemplo da dinâmica:** crie Água como tema central → estudantes propõem *Supressão vegetal (P)*, *Pulso de inundação (S)*, *Biodiversidade (I)* e *Restauração florestal (R)* → turma discute direção, sinal e intensidade das relações. Para analisar diferentes reservatórios, crie simultaneamente *Carbono no solo* e *Carbono na biomassa aérea*.
+
 ## Tema central e influências incidentes
 
 A aba **Rede** inclui **◎ Tema central** (também disponível como **Focar** ao selecionar uma bolinha). Escolha qualquer conceito existente — por exemplo, **Carbono orgânico do solo (SOC)** ou **Pulso de inundação**. Caso não exista, crie-o com **+ Conceito** antes de focar.
