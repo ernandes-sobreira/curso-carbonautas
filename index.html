@@ -1474,6 +1474,146 @@ dialog::backdrop{background:rgba(16,43,57,.38);backdrop-filter:blur(2px)}
    download("pantanal-incidencias-"+a.target.label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").slice(0,36)+".csv",csv(rows),"text/csv;charset=utf-8");
  });
 
+
+/* MÉTRICAS CIENTÍFICAS: valor observado, consenso e evidências */
+function setIndicatorFields(n){
+  const fields={nodeIndicator:"indicator",nodeUnit:"measurement_unit",nodeMeasured:"measured_value",
+    nodeMin:"reference_min",nodeMax:"reference_max",nodePeriod:"measurement_period",nodeSource:"measurement_source"};
+  for(const [id,k] of Object.entries(fields))$(id).value=n?.[k]??"";
+  $("indicatorDetails").open=!!(n?.indicator||n?.measured_value!==null&&n?.measured_value!==undefined);
+}
+function readIndicatorFields(){
+  const numeric=(id)=>{const x=$(id).value.trim();if(x==="")return null;const n=Number(x);if(!Number.isFinite(n)||Math.abs(n)>1e12)throw Error("Valor numérico inválido.");return n};
+  const min=numeric("nodeMin"),max=numeric("nodeMax");
+  if(min!==null&&max!==null&&max<=min)throw Error("O máximo de referência deve superar o mínimo.");
+  return {indicator:$("nodeIndicator").value.trim(),measurement_unit:$("nodeUnit").value.trim(),
+    measured_value:numeric("nodeMeasured"),reference_min:min,reference_max:max,
+    measurement_period:$("nodePeriod").value.trim(),measurement_source:$("nodeSource").value.trim()};
+}
+function quartile(sorted,p){
+  if(!sorted.length)return null;
+  const pos=(sorted.length-1)*p,lo=Math.floor(pos),hi=Math.ceil(pos);
+  return sorted[lo]+(sorted[hi]-sorted[lo])*(pos-lo);
+}
+function consensusFor(edgeId,ballots){
+  const votes=ballots.filter(x=>x.edge_id===edgeId);
+  if(!votes.length)return null;
+  const plus=votes.filter(x=>Number(x.sign)>0).length,minus=votes.length-plus;
+  const sign=plus===minus?0:plus>minus?1:-1;
+  const matching=votes.filter(x=>Number(x.sign)===sign).map(x=>Number(x.intensity)).sort((a,b)=>a-b);
+  const all=votes.map(x=>Number(x.intensity)).sort((a,b)=>a-b);
+  const median=(arr)=>quartile(arr,0.5);
+  const evidence={percepcao:0,conhecimento_local:0,literatura:0,dados:0};
+  for(const v of votes)if(v.evidence_type in evidence)evidence[v.evidence_type]++;
+  const confidence=median(votes.map(x=>Number(x.confidence)).sort((a,b)=>a-b));
+  const agreement=Math.max(plus,minus)/votes.length;
+  return{n:votes.length,sign,median:matching.length?median(matching):null,
+    q1:quartile(all,0.25),q3:quartile(all,0.75),agreement,confidence,evidence,
+    eligible:votes.length>=3&&agreement>=2/3&&sign!==0};
+}
+function activeVotes(){return reviewedSnapshot?(reviewedSnapshot.ratings||[]):metricRatings}
+function renderMetrics(){
+  if(!$("indicatorList"))return;
+  const d=displayData(),root=$("indicatorList"),edgeSel=$("ratingEdge"),votes=activeVotes();
+  root.replaceChildren();
+  if(!d.nodes.length){root.textContent="A turma ainda não criou conceitos.";return}
+  d.nodes.forEach(n=>{
+    const row=document.createElement("div");row.className="metric-row";
+    const left=document.createElement("div");
+    const heading=document.createElement("b");heading.textContent=n.label;left.append(heading);
+    const desc=document.createElement("small");
+    const measured=n.measured_value===null||n.measured_value===undefined?"Sem valor medido":Number(n.measured_value).toLocaleString("pt-BR")+" "+(n.measurement_unit||"");
+    desc.textContent=(n.indicator||"Indicador não definido")+" · "+measured;
+    left.append(desc);
+    if(n.reference_min!==null&&n.reference_min!==undefined&&n.reference_max!==null&&n.reference_max!==undefined&&n.measured_value!==null&&n.measured_value!==undefined){
+      const lo=Number(n.reference_min),hi=Number(n.reference_max),v=Number(n.measured_value);
+      if(hi>lo){const norm=(v-lo)/(hi-lo);
+        const m=document.createElement("small");m.textContent="Valor normalizado no intervalo declarado: "+Math.min(1,Math.max(0,norm)).toFixed(3)+(norm<0||norm>1?" (fora do intervalo)":"");left.append(m)}
+    }
+    if(n.measurement_period||n.measurement_source){const source=document.createElement("small");source.textContent=[n.measurement_period,n.measurement_source].filter(Boolean).join(" · ");left.append(source)}
+    const action=document.createElement("div");action.className="metric-actions";
+    const btn=document.createElement("button");btn.className="btn";btn.textContent="Editar indicador";btn.disabled=!!reviewedSnapshot||!canEdit();
+    btn.addEventListener("click",()=>openEditNode(n.id));action.append(btn);row.append(left,action);root.append(row);
+  });
+  const old=edgeSel.value;edgeSel.replaceChildren();
+  const first=document.createElement("option");first.value="";first.textContent="Selecione uma ligação";edgeSel.append(first);
+  d.edges.forEach(e=>{
+    const a=d.nodes.find(n=>n.id===e.source_id),b=d.nodes.find(n=>n.id===e.target_id);
+    if(!a||!b)return;const o=document.createElement("option");o.value=e.id;o.textContent=a.label+" → "+b.label;edgeSel.append(o)
+  });
+  if(d.edges.some(e=>e.id===old))edgeSel.value=old;
+  $("ratingSubmit").disabled=!!reviewedSnapshot||!canEdit()||d.edges.length===0;
+  const box=$("consensusList");box.replaceChildren();
+  if(!d.edges.length){box.textContent="Crie ligações para receber avaliações independentes.";return}
+  d.edges.forEach(e=>{
+    const n1=d.nodes.find(n=>n.id===e.source_id),n2=d.nodes.find(n=>n.id===e.target_id);
+    if(!n1||!n2)return;
+    const c=consensusFor(e.id,votes);
+    const row=document.createElement("div");row.className="metric-row";
+    const info=document.createElement("div");const h=document.createElement("b");h.textContent=n1.label+" → "+n2.label;info.append(h);
+    const sum=document.createElement("small");
+    if(!c)sum.textContent="Nenhuma avaliação independente · peso atual da rede: "+(Number(e.sign)>0?"+":"−")+Math.round(Number(e.weight)*100);
+    else{
+      const signed=c.sign===0?"sinal empatado":(c.sign>0?"+":"−")+Math.round(c.median??0);
+      sum.textContent=c.n+" avaliações · mediana consensual "+signed+
+       " · concordância de sinal "+(c.agreement*100).toFixed(0)+"%"+
+       " · Q1–Q3 (todas intensidades) "+Math.round(c.q1)+"–"+Math.round(c.q3)+
+       " · confiança mediana "+c.confidence+"/3";
+      info.append(sum);
+      const ev=document.createElement("small");
+      ev.textContent="Fontes declaradas: dados "+c.evidence.dados+", literatura "+c.evidence.literatura+", conhecimento local "+c.evidence.conhecimento_local+", hipóteses "+c.evidence.percepcao;
+      info.append(ev);
+    }
+    if(!c)info.append(sum);
+    const actions=document.createElement("div");actions.className="metric-actions";
+    const select=document.createElement("button");select.className="btn";select.textContent="Avaliar";
+    select.disabled=!!reviewedSnapshot||!canEdit();
+    select.addEventListener("click",()=>{edgeSel.value=e.id;$("ratingEdge").scrollIntoView({behavior:"smooth",block:"center"})});
+    actions.append(select);
+    if(isFacilitator&&c?.eligible&&!reviewedSnapshot){
+      const adopt=document.createElement("button");adopt.className="btn teal";adopt.textContent="Adotar mediana";
+      adopt.addEventListener("click",async()=>{
+        if(!await confirmDialog("Adotar consenso","Substituir o peso atribuído à seta pela mediana do sinal predominante? Essa ação não valida causalidade.","Aplicar"))return;
+        try{await api("apply_consensus",{edge_id:e.id});triggerRefresh();renderSignature="";await load();await loadMetrics();toast("Peso consensual aplicado à seta.")}
+        catch(err){toast(errorText(err),true)}
+      });
+      actions.append(adopt);
+    }
+    if(c&&!c.eligible){const caution=document.createElement("small");caution.className="metric-muted-warning";caution.textContent="Consenso não elegível: menos de 3 avaliações ou baixo acordo de sinal.";info.append(caution)}
+    row.append(info,actions);box.append(row)
+  })
+}
+async function loadMetrics(){
+  if(!ROOM)return;
+  try{const data=await api("get_metrics");metricRatings=data.ratings||[];metricsLastFetch=Date.now();renderMetrics()}
+  catch(err){$("ratingStatus").textContent="Falha ao consultar avaliações: "+errorText(err)}
+}
+const voterKey="pantdpsir-voter-v1";
+function getVoterToken(){
+ let token=localStorage.getItem(voterKey);
+ if(!token||token.length<24){token=crypto.randomUUID()+"-"+crypto.randomUUID();localStorage.setItem(voterKey,token)}
+ return token;
+}
+$("metricsRefreshBtn").addEventListener("click",loadMetrics);
+$("ratingIntensity").addEventListener("input",()=>{$("ratingNumber").value=$("ratingIntensity").value});
+$("ratingNumber").addEventListener("input",()=>{if($("ratingNumber").value!=="")$("ratingIntensity").value=Math.min(100,Math.max(0,Number($("ratingNumber").value)||0))});
+$("ratingForm").addEventListener("submit",async event=>{
+ event.preventDefault();if(!canEdit())return toast("A sala não permite avaliações agora.",true);
+ const edge_id=$("ratingEdge").value;
+ if(!edge_id)return $("ratingStatus").textContent="Selecione uma relação.";
+ const evidence_type=$("ratingEvidence").value,evidence_reference=$("ratingReference").value.trim();
+ if(["literatura","dados"].includes(evidence_type)&&evidence_reference.length<5){
+   $("ratingStatus").textContent="Para literatura ou dados, registre a fonte ou referência.";return
+ }
+ const payload={edge_id,intensity:Math.round(Number($("ratingNumber").value)),sign:Number($("ratingSign").value),
+  confidence:Number($("ratingConfidence").value),evidence_type,evidence_reference,
+  context_note:$("ratingContext").value.trim(),voter:getVoterToken()};
+ const btn=$("ratingSubmit");btn.disabled=true;$("ratingStatus").textContent="Registrando avaliação…";
+ try{await api("vote_edge",payload);await loadMetrics();$("ratingStatus").textContent="Avaliação registrada. Você pode revisá-la no mesmo navegador.";toast("Avaliação registrada sem alterar a seta.")}
+ catch(err){$("ratingStatus").textContent=errorText(err)}
+ finally{btn.disabled=!canEdit()}
+});
+
  /* navigation */
  function switchView(name){
   document.querySelectorAll(".nav [role=tab]").forEach(t=>{const on=t.dataset.view===name;t.setAttribute("aria-selected",on?"true":"false");t.tabIndex=on?0:-1});
