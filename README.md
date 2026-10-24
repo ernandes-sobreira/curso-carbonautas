@@ -33,6 +33,17 @@ O endereço principal abre uma página de salas. A pessoa com a chave do **facil
 - **Versões arquivadas:** facilitador guarda versões no servidor; os participantes podem visualizá-las na aba Resultados. Ao restaurar um arquivo, um backup da rede anterior é criado automaticamente.
 - **Sobre:** explicações metodológicas e limites científicos.
 
+## Tema central e influências incidentes
+
+A aba **Rede** inclui **◎ Tema central** (também disponível como **Focar** ao selecionar uma bolinha). Escolha qualquer conceito existente — por exemplo, **Carbono orgânico do solo (SOC)** ou **Pulso de inundação**. Caso não exista, crie-o com **+ Conceito** antes de focar.
+
+- A rede destaca **apenas as variáveis com setas chegando ao tema central**; outras relações ficam esmaecidas. As bolinhas continuam móveis.
+- O painel lateral ordena as **influências diretas pela intensidade absoluta (0 a 100)**, mostrando o sinal positivo (+) ou negativo (−).
+- Ao ativar **Ver caminhos indiretos (2 etapas)**, a ferramenta também destaca trajetos da forma *variável A → intermediária B → tema central*. A força composta é calculada, apenas para exploração, como produto das duas intensidades normalizadas, multiplicado pelos sinais, e reconvertido para −100 a +100.
+- **↓ CSV** exporta o ranking do tema analisado. **Mostrar toda a rede** remove o filtro e volta à visualização completa.
+- A escolha de tema é uma **lente visual local por sala**, lembrada neste navegador. Não altera as ligações dos outros participantes. O JSON exportado inclui o tema selecionado (`focus.node_id`), e ao abrir esse arquivo o modo poderá recuperar essa seleção.
+- Valores indicam as **hipóteses ponderadas pelo grupo**, não coeficientes de causalidade estimados, nem correlações. Um caminho de duas etapas não demonstra causalidade indireta no Pantanal real.
+
 ## Como conduzir a oficina
 
 1. Abra o endereço principal, crie uma sala com a chave do facilitador e informe o código aos alunos. Projete o QR Code **dentro dessa sala**, ou peça que digitem o código na página inicial.
